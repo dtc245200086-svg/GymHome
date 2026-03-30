@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏋️ GymHome - Hệ Thống Quản Lý Phòng Tập Hiện Đại</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>🏋️ GYM HOME 💪</h1>
+    <p>Hệ Thống Quản Lý Phòng Tập Hiện Đại - 5 Tầng Đầy Đủ Tiện Nghi</p>
+  </header>
+  <div class="container">
+    <div style="text-align: center; margin-bottom: 40px;">
+      <p style="font-size: 1.3em; color: #ffd700; margin-bottom: 20px;">🚀 Bắt Đầu Nhanh Chóng</p>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="card">
+        <h3>🔑 Đăng Nhập</h3>
+        <p>Truy cập hệ thống quản lý phòng tập</p>
+        <a href="/login" class="btn">Đăng Nhập</a>
+      </div>
+      <div class="card">
+        <h3>📋 Đăng Ký Hội Viên</h3>
+        <p>Trở thành hội viên của Gym Home</p>
+        <a href="/register" class="btn">Đăng Ký</a>
+      </div>
+      <div class="card">
+        <h3>👥 Danh Sách Hội Viên</h3>
+        <p>Xem tất cả hội viên và tạo mã QR</p>
+        <a href="/members" class="btn">Xem Danh Sách</a>
+      </div>
+      <div class="card">
+        <h3>� Quét Thẻ Vào Cửa</h3>
+        <p>Điểm quét QR trực tiếp tại cửa phòng tập</p>
+        <a href="/scanner" class="btn">Mở Quét Thẻ</a>
+      </div>
+      <div class="card">
+        <h3>�📊 Dashboard</h3>
+        <p>Thống kê truy cập theo tầng theo giờ</p>
+        <a href="/dashboard" class="btn">Xem Thống Kê</a>
+      </div>
+      <div class="card">
+        <h3>🏃 Quản Lý PT</h3>
+        <p>Xác nhận buổi tập luyện của hội viên</p>
+        <a href="/pt" class="btn">Quản Lý PT</a>
+      </div>
+      <div class="card">
+        <h3>⚙️ Cấu Hình Thiết Bị</h3>
+        <p>Quản lý IP các máy đọc QR 5 tầng</p>
+        <a href="/admin/devices" class="btn">Cấu Hình</a>
+      </div>
+      <div class="card">
+        <h3>📈 Báo Cáo Doanh Thu</h3>
+        <p>Thống kê hội viên, buổi tập, truy cập</p>
+        <a href="/admin/reports" class="btn">Xem Báo Cáo</a>
+      </div>
+      <div class="card">
+        <h3>⚠️ Cảnh Báo Hệ Thống</h3>
+        <p>Thẻ sắp hết hạn, buổi PT sắp hết</p>
+        <a href="/admin/alerts" class="btn">Xem Cảnh Báo</a>
+      </div>
+    </div>
+
+    <hr style="margin-top: 50px; border: none; border-top: 2px solid #ff6b35; opacity: 0.3;">
+    
+    <div style="text-align: center; margin-top: 40px;">
+      <h2 style="color: #ffd700; font-size: 1.6em; margin-bottom: 15px;">🎯 Tài Khoản Demo</h2>
+      <div style="background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%); padding: 25px; border-radius: 15px; max-width: 600px; margin: 0 auto; border: 2px solid #ff6b35;">
+        <table style="width: 100%; text-align: left;">
+          <thead>
+            <tr>
+              <th>👤 Vai Trò</th>
+              <th>🔓 Username</th>
+              <th>🔐 Password</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong style="color: #ff6b35;">⚙️ Admin</strong></td>
+              <td><code style="color: #ffd700;">admin</code></td>
+              <td><code style="color: #ffd700;">admin</code></td>
+            </tr>
+            <tr>
+              <td><strong style="color: #ff6b35;">🎫 Lễ Tân</strong></td>
+              <td><code style="color: #ffd700;">letan</code></td>
+              <td><code style="color: #ffd700;">letan</code></td>
+            </tr>
+            <tr>
+              <td><strong style="color: #ff6b35;">🏃 PT</strong></td>
+              <td><code style="color: #ffd700;">pt</code></td>
+              <td><code style="color: #ffd700;">pt</code></td>
+            </tr>
+            <tr>
+              <td><strong style="color: #ff6b35;">👥 Hội Viên</strong></td>
+              <td><code style="color: #ffd700;">member</code></td>
+              <td><code style="color: #ffd700;">member</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; color: #999;">
+      <p style="font-size: 0.95em;">💪 Gym Home - Nơi Bạn Xây Dựng Sức Khỏe | Được Thiết Kế Để Quản Lý Phòng Tập Hiện Đại</p>
+      <small>v1.0 | Hỗ Trợ 5 Tầng | SQLite Database | Hệ Thống Đầy Đủ</small>
+    </div>
+  </div>
+</body>
+</html>

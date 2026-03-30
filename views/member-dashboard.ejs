@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👤 Dashboard Hội Viên - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .member-banner {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+      padding: 40px 20px;
+      border-radius: 15px;
+      text-align: center;
+      margin-bottom: 30px;
+      box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);
+    }
+    .member-banner h2 {
+      font-size: 2em;
+      color: white;
+      margin: 10px 0;
+    }
+    .member-banner p {
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 1.1em;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .info-card {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 4px solid #ffd700;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+    }
+    .info-card h4 {
+      color: #ff6b35;
+      margin: 0 0 10px 0;
+      font-size: 0.9em;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .info-card p {
+      margin: 0;
+      font-size: 1.3em;
+      color: #ffd700;
+      font-weight: bold;
+    }
+    .status-good {
+      color: #4caf50;
+    }
+    .status-warning {
+      color: #ff9800;
+    }
+    .status-critical {
+      color: #ff6b35;
+    }
+    .qr-section {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      border: 3px dashed #ffd700;
+      margin-bottom: 30px;
+    }
+    .qr-section h3 {
+      color: #ffd700;
+      margin-top: 0;
+      font-size: 1.4em;
+    }
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>👤 DASHBOARD HỘI VIÊN 💪</h1>
+    <p>Quản Lý Thông Tin Cá Nhân & Truy Cập Phòng Tập</p>
+  </header>
+
+  <div class="container">
+    <div class="member-banner">
+      <h2>🏋️ Chào Mừng <%= member.name.toUpperCase() %> 👋</h2>
+      <p>Sẵn Sàng Tập Luyện Hôm Nay?</p>
+    </div>
+
+    <h2>📋 Thông Tin Cá Nhân</h2>
+    <div class="info-grid">
+      <div class="info-card">
+        <h4>👤 Họ Tên</h4>
+        <p><%= member.name %></p>
+      </div>
+      <div class="info-card">
+        <h4>📞 Số Điện Thoại</h4>
+        <p><%= member.phone %></p>
+      </div>
+      <div class="info-card">
+        <h4>🎯 Loại Thẻ</h4>
+        <p style="color: <%= member.type === 'VIP' ? '#ffd700' : (member.type === 'Regular' ? '#ff6b35' : '#999') %>;">
+          <%= member.type %>
+        </p>
+      </div>
+      <div class="info-card">
+        <h4>📅 Hạn Thẻ</h4>
+        <p class="<%= new Date(member.expiry) <= new Date(Date.now() + 5*24*60*60*1000) ? 'status-critical' : (new Date(member.expiry) <= new Date(Date.now() + 30*24*60*60*1000) ? 'status-warning' : 'status-good') %>">
+          <%= member.expiry %>
+        </p>
+      </div>
+      <div class="info-card">
+        <h4>🏃 Buổi PT Còn Lại</h4>
+        <p class="<%= member.pt_sessions < 2 ? 'status-critical' : (member.pt_sessions < 5 ? 'status-warning' : 'status-good') %>">
+          <%= member.pt_sessions %> Buổi
+        </p>
+      </div>
+    </div>
+
+    <div class="qr-section">
+      <h3>🔐 Mã QR Truy Cập</h3>
+      <p style="color: #ccc; margin-bottom: 20px;">Quét mã QR này tại cửa để truy cập phòng gym</p>
+      <a href="/qr/<%= member.id %>" class="btn" style="margin-bottom: 0;">📱 Tạo Mã QR</a>
+    </div>
+
+    <div class="action-grid">
+      <div class="card">
+        <h3>📊 Lịch Sử Truy Cập</h3>
+        <p>Xem lịch sử truy cập phòng tập của bạn</p>
+        <a href="/dashboard" class="btn">Xem Lịch Sử</a>
+      </div>
+      <div class="card">
+        <h3>🏠 Quay Lại Trang Chủ</h3>
+        <p>Về trang chủ hệ thống</p>
+        <a href="/" class="btn">Trang Chủ</a>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/logout" class="logout">🚪 Đăng Xuất</a>
+    </div>
+  </div>
+</body>
+</html>

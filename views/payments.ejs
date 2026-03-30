@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💰 Quản Lý Thanh Toán - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>💰 QUẢN LÝ THANH TOÁN 💳</h1>
+    <p>Theo Dõi & Ghi Nhận Chi Phí Hội Viên</p>
+  </header>
+
+  <div class="container">
+    <div class="card" style="text-align: center; background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%); border: none; margin-bottom: 30px;">
+      <h2 style="color: white; margin: 0;">💵 TỔNG DOANH THU</h2>
+      <p style="color: rgba(255,255,255,0.9); font-size: 2em; margin: 10px 0;"><strong><%= totalRevenue.toLocaleString('vi-VN') %> đ</strong></p>
+    </div>
+
+    <h2>📝 Thêm Thanh Toán Mới</h2>
+    <form method="post" action="/admin/payment/add">
+      <label for="member_id">🎫 Chọn Hội Viên:</label>
+      <select id="member_id" name="member_id" required>
+        <option value="">-- Chọn hội viên --</option>
+        <option value="1">Hội viên 1</option>
+        <option value="2">Hội viên 2</option>
+      </select>
+
+      <label for="amount">💵 Số Tiền (VND):</label>
+      <input type="number" id="amount" name="amount" placeholder="100000" required min="10000">
+
+      <label for="type">📦 Loại:</label>
+      <select id="type" name="type" required>
+        <option value="membership">Đăng Ký Thẻ</option>
+        <option value="renewal">Gia Hạn Thẻ</option>
+        <option value="pt_session">Buổi PT</option>
+        <option value="personal_training">Gói PT</option>
+      </select>
+
+      <button type="submit">✅ Ghi Nhận Thanh Toán</button>
+    </form>
+
+    <h2>💳 Lịch Thanh Toán</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>👤 Hội Viên</th>
+          <th>💰 Số Tiền</th>
+          <th>📦 Loại</th>
+          <th>📅 Ngày</th>
+          <th>✅ Trạng Thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% payments.forEach(p => { %>
+          <tr>
+            <td><strong><%= p.member_name %></strong></td>
+            <td style="color: #4caf50; font-weight: bold;"><%= p.amount.toLocaleString('vi-VN') %> đ</td>
+            <td>
+              <% if (p.type === 'membership') { %>
+                🎫 Đăng Ký
+              <% } else if (p.type === 'renewal') { %>
+                🔄 Gia Hạn
+              <% } else if (p.type === 'pt_session') { %>
+                🏃 Buổi PT
+              <% } else { %>
+                💪 Gói PT
+              <% } %>
+            </td>
+            <td><%= p.date %></td>
+            <td><span style="color: #4caf50;">✅ <%= p.status %></span></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <h2>📊 Xuất Báo Cáo</h2>
+    <div class="dashboard-grid">
+      <div class="card">
+        <h3>📥 Xuất CSV</h3>
+        <p>Tải dữ liệu thanh toán thành file CSV</p>
+        <a href="/admin/export/payments" class="btn">📥 Xuất Dữ Liệu</a>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/admin/dashboard" class="btn">← Quay Lại Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>

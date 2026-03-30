@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📱 Mã QR - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .qr-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+    }
+    .qr-box {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 30px;
+      border-radius: 15px;
+      border: 3px solid #ffd700;
+      box-shadow: 0 8px 30px rgba(255, 215, 0, 0.2);
+    }
+    .qr-box img {
+      max-width: 300px;
+      height: auto;
+      border-radius: 10px;
+    }
+    .member-card {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+      padding: 20px;
+      border-radius: 15px;
+      max-width: 400px;
+      color: white;
+      box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);
+    }
+    .member-card h3 {
+      color: white;
+      margin-top: 0;
+      font-size: 1.3em;
+    }
+    .member-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .info-item {
+      background: rgba(255,255,255,0.2);
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .info-item label {
+      display: block;
+      font-size: 0.85em;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+    .info-item strong {
+      display: block;
+      font-size: 1.1em;
+    }
+    .instructions {
+      background: linear-gradient(135deg, #2196F3 0%, #42a5f5 100%);
+      padding: 25px;
+      border-radius: 15px;
+      max-width: 500px;
+      color: white;
+      box-shadow: 0 8px 20px rgba(33, 150, 243, 0.3);
+    }
+    .instructions h4 {
+      color: white;
+      margin-top: 0;
+      font-size: 1.2em;
+    }
+    .instructions ol {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin: 8px 0;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📱 MÃ QR TRUY CẬP 🔐</h1>
+    <p>Quét Mã QR Này Tại Cửa Để Vào Phòng Tập</p>
+  </header>
+
+  <div class="container">
+    <div class="qr-container">
+      <!-- Member Info Card -->
+      <% if (member) { %>
+        <div class="member-card">
+          <h3>👤 <%= member.name %></h3>
+          <div class="member-info">
+            <div class="info-item">
+              <label>Loại Thẻ</label>
+              <strong><%= member.type %></strong>
+            </div>
+            <div class="info-item">
+              <label>Hạn Thẻ</label>
+              <strong><%= member.expiry %></strong>
+            </div>
+            <div class="info-item">
+              <label>Điện Thoại</label>
+              <strong><%= member.phone %></strong>
+            </div>
+            <div class="info-item">
+              <label>Buổi PT</label>
+              <strong><%= member.pt_sessions %> buổi</strong>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- QR Code -->
+      <div class="qr-box">
+        <img src="<%= qr %>" alt="QR Code">
+        <p style="text-align: center; color: #ffd700; margin-top: 15px;">
+          <strong>🔷 Đặt điện thoại trước máy đọc QR</strong><br>
+          <span style="font-size: 0.9em;">Máy sẽ tự động quét & hiển thị thông báo</span>
+        </p>
+      </div>
+
+      <!-- Instructions -->
+      <div class="instructions">
+        <h4>📋 Hướng Dẫn:</h4>
+        <ol>
+          <li>Hiển thị mã QR này trên màn hình điện thoại</li>
+          <li>Đặt điện thoại gần máy đọc QR tại cửa</li>
+          <li>Chờ 1-2 giây máy sẽ quét & mở cửa</li>
+          <li>Nếu có lỗi, bạn sẽ nhận được thông báo chi tiết</li>
+        </ol>
+      </div>
+
+      <!-- Back Button -->
+      <div style="text-align: center;">
+        <a href="/member-dashboard" class="btn">← Quay Lại</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check member expiry & show warning if needed
+    window.addEventListener('load', () => {
+      const expiryDate = '<%= member.expiry %>';
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (expiryDate < today) {
+        alert('⚠️ CẢNH BÁO: Thẻ của bạn đã hết hạn!\n\nVui lòng liên hệ lễ tân để gia hạn');
+      } else {
+        const expDate = new Date(expiryDate);
+        const todayDate = new Date(today);
+        const daysLeft = Math.ceil((expDate - todayDate) / (1000 * 60 * 60 * 24));
+        
+        if (daysLeft <= 5) {
+          alert(`⏰ CẢNH BÁO: Thẻ của bạn sắp hết hạn trong ${daysLeft} ngày!\n\nVui lòng liên hệ lễ tân để gia hạn trước khi hết hạn`);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

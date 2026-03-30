@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚙️ Cấu Hình Thiết Bị - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .device-form {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 30px;
+      border-radius: 15px;
+      margin-bottom: 40px;
+      border: 2px solid #ffd700;
+      box-shadow: 0 8px 20px rgba(255, 215, 0, 0.2);
+    }
+    .form-group {
+      margin: 20px 0;
+    }
+    .form-group label {
+      display: block;
+      color: #ffd700;
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ff6b35;
+      border-radius: 8px;
+      background: #1a1a1a;
+      color: white;
+      font-size: 1em;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #ffd700;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    }
+    .device-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-top: 40px;
+    }
+    .device-card {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 20px;
+      border-radius: 12px;
+      border: 2px solid #ff6b35;
+      box-shadow: 0 6px 15px rgba(255, 107, 53, 0.2);
+    }
+    .device-card h3 {
+      color: #ffd700;
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.3em;
+    }
+    .floor-badge {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.9em;
+    }
+    .device-info {
+      background: rgba(0,0,0,0.3);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .device-info p {
+      margin: 8px 0;
+      color: #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .device-info strong {
+      color: #ffd700;
+    }
+    .ip-display {
+      background: #1a1a1a;
+      padding: 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      color: #00ff00;
+      word-break: break-all;
+    }
+    .device-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .btn-edit {
+      background: #ff6b35;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    .btn-edit:hover {
+      background: #ff8c42;
+      transform: scale(1.05);
+    }
+    .btn-delete {
+      background: #d32f2f;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    .btn-delete:hover {
+      background: #f44336;
+      transform: scale(1.05);
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.8);
+    }
+    .modal-content {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      margin: 10% auto;
+      padding: 30px;
+      border: 2px solid #ffd700;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    }
+    .close {
+      color: #ffd700;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover {
+      color: #ff6b35;
+    }
+    .modal h2 {
+      color: #ffd700;
+      margin-top: 0;
+    }
+    @media (max-width: 768px) {
+      .device-section {
+        grid-template-columns: 1fr;
+      }
+      .device-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚙️ CẤU HÌNH THIẾT BỊ QR</h1>
+    <p>Quản Lý Thiết Bị Đọc QR & IP Tại 5 Tầng</p>
+  </header>
+
+  <div class="container">
+    <!-- Form Thêm Thiết Bị Mới -->
+    <div class="device-form">
+      <h2 style="color: #ffd700; margin-top: 0;">➕ Thêm Thiết Bị Mới</h2>
+      <form method="POST" action="/admin/devices/add">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label>📍 Chọn Tầng</label>
+            <select name="floor" required>
+              <option value="">-- Chọn Tầng --</option>
+              <option value="1">Tầng 1 - Yoga & Stretching</option>
+              <option value="2">Tầng 2 - Cardio & Weights</option>
+              <option value="3">Tầng 3 - PT Training</option>
+              <option value="4">Tầng 4 - VIP Lounge</option>
+              <option value="5">Tầng 5 - Admin</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>🌐 Địa Chỉ IP</label>
+            <input type="text" name="ip" required placeholder="VD: 192.168.1.100" pattern="\d+\.\d+\.\d+\.\d+">
+          </div>
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">✅ Thêm Thiết Bị</button>
+      </form>
+    </div>
+
+    <!-- Danh Sách Thiết Bị -->
+    <h2 style="color: #ffd700; margin-bottom: 20px;">📋 Danh Sách Thiết Bị Hiện Tại</h2>
+
+    <% if (devices && devices.length > 0) { %>
+      <div class="device-section">
+        <% devices.forEach(device => { %>
+          <div class="device-card">
+            <h3>
+              <span class="floor-badge">Tầng <%= device.floor %></span>
+            </h3>
+            <div class="device-info">
+              <p>
+                <strong>🏢 Tên Tầng:</strong>
+                <% if (device.floor == 1) { %>
+                  Yoga & Stretching
+                <% } else if (device.floor == 2) { %>
+                  Cardio & Weights
+                <% } else if (device.floor == 3) { %>
+                  PT Training
+                <% } else if (device.floor == 4) { %>
+                  VIP Lounge
+                <% } else if (device.floor == 5) { %>
+                  Admin
+                <% } %>
+              </p>
+              <p style="justify-content: flex-start; align-items: flex-start;">
+                <strong style="margin-right: 10px;">🌐 IP Address:</strong>
+                <span class="ip-display"><%= device.ip %></span>
+              </p>
+              <p>
+                <strong>🆔 Thiết Bị ID:</strong> <%= device.id %>
+              </p>
+            </div>
+            <div class="device-actions">
+              <button class="btn-edit" onclick="editDevice(<%= device.id %>, <%= device.floor %>, '<%= device.ip %>')">✏️ Chỉnh Sửa</button>
+              <form method="POST" action="/admin/devices/delete/<%= device.id %>" style="margin: 0;" onsubmit="return confirm('Xác nhận xóa thiết bị tầng <%= device.floor %>?');">
+                <button type="submit" class="btn-delete" style="width: 100%;">🗑️ Xóa</button>
+              </form>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div style="text-align: center; color: #999; padding: 40px; background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%); border-radius: 10px;">
+        <p style="font-size: 1.3em;">📭 Chưa có thiết bị nào</p>
+        <p>Thêm thiết bị mới từ form bên trên</p>
+      </div>
+    <% } %>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/admin/dashboard" class="btn">↩️ Quay Lại Admin Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Modal Chỉnh Sửa -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2>✏️ Chỉnh Sửa IP Thiết Bị</h2>
+      <form method="POST" id="editForm">
+        <div class="form-group">
+          <label>📍 Tầng</label>
+          <input type="text" id="floorDisplay" readonly style="background: #111; color: #999; cursor: not-allowed;">
+        </div>
+        <div class="form-group">
+          <label>🌐 Địa Chỉ IP Mới</label>
+          <input type="text" name="ip" id="ipInput" required placeholder="VD: 192.168.1.100" pattern="\d+\.\d+\.\d+\.\d+">
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">💾 Lưu Thay Đổi</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function editDevice(deviceId, floor, ip) {
+      document.getElementById('editModal').style.display = 'block';
+      document.getElementById('floorDisplay').value = 'Tầng ' + floor;
+      document.getElementById('ipInput').value = ip;
+      document.getElementById('editForm').action = '/admin/devices/update/' + deviceId;
+    }
+
+    function closeModal() {
+      document.getElementById('editModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById('editModal');
+      if (event.target == modal) {
+        modal.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

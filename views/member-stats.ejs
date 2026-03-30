@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📊 Thống Kê Hội Viên - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>📊 THỐNG KÊ HỘI VIÊN 🎯</h1>
+    <p>Phân Tích & Theo Dõi Hoạt Động Hội Viên</p>
+  </header>
+
+  <div class="container">
+    <h2>👥 Thống Kê Hoạt Động</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>👤 Hội Viên</th>
+          <th>📞 Điện Thoại</th>
+          <th>🎯 Loại</th>
+          <th>📅 Hạn</th>
+          <th>🏋️ Tổng Lần Visit</th>
+          <th>📈 30 Ngày Gần Đây</th>
+          <th>🎓 PT Hoàn Thành</th>
+          <th>⭐ Mức Độ Hoạt Động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% members.forEach(m => { 
+          const activity = m.visits_30days > 20 ? 'Rất Cao' : (m.visits_30days > 10 ? 'Cao' : (m.visits_30days > 5 ? 'Trung Bình' : 'Thấp'));
+          const color = m.visits_30days > 20 ? '#4caf50' : (m.visits_30days > 10 ? '#ff9800' : '#ff6b35');
+        %>
+          <tr>
+            <td><strong><%= m.name %></strong></td>
+            <td><%= m.phone %></td>
+            <td><%= m.type %></td>
+            <td><%= m.expiry %></td>
+            <td style="text-align: center; font-weight: bold;"><%= m.total_visits || 0 %></td>
+            <td style="text-align: center; font-weight: bold; color: #2196F3;"><%= m.visits_30days || 0 %></td>
+            <td style="text-align: center; font-weight: bold; color: #4caf50;"><%= m.pt_completed || 0 %></td>
+            <td style="text-align: center; font-weight: bold; color: <%= color %>;">
+              <% if (activity === 'Rất Cao') { %>
+                🔥 <%= activity %>
+              <% } else if (activity === 'Cao') { %>
+                ⚡ <%= activity %>
+              <% } else if (activity === 'Trung Bình') { %>
+                👍 <%= activity %>
+              <% } else { %>
+                😴 <%= activity %>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <h2>📥 Xuất Báo Cáo</h2>
+    <div class="dashboard-grid">
+      <div class="card">
+        <h3>📋 Danh Sách Hội Viên</h3>
+        <p>Xuất tất cả hội viên thành file CSV</p>
+        <a href="/admin/export/members" class="btn">📥 Xuất CSV</a>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/admin/dashboard" class="btn">← Quay Lại Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>

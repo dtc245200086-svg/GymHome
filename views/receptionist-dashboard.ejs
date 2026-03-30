@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎫 Dashboard Lễ Tân - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>🎫 LỄ TÂN DASHBOARD 👋</h1>
+    <p>Quản Lý Hội Viên - Tương Tác Với Khách Hàng</p>
+  </header>
+  <div class="container">
+    <div style="background: linear-gradient(135deg, #ffd700 0%, #ffb86c 100%); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 40px; box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3); color: #1a1a1a;">
+      <h2 style="margin: 0; font-size: 1.8em;">👋 Chào Mừng Lễ Tân</h2>
+      <p style="margin-top: 10px; font-weight: 600;">Quản Lý Hội Viên & Đăng Ký Mới 💪</p>
+    </div>
+    <div class="dashboard-grid">
+      <div class="card">
+        <h3>� Quét Thẻ Vào Cửa</h3>
+        <p>Quét QR hội viên tại cửa, xem thông tin & lịch sử</p>
+        <a href="/scanner" class="btn">🔐 Mở Quét</a>
+      </div>
+      <div class="card">
+        <h3>�📝 Đăng Ký Hội Viên Mới</h3>
+        <p>Thêm hội viên mới vào hệ thống, cấp thẻ Regular/VIP</p>
+        <a href="/register" class="btn">✍️ Đăng Ký</a>
+      </div>
+      <div class="card">
+        <h3>👥 Danh Sách Hội Viên</h3>
+        <p>Xem, quản lý và tạo mã QR cho hội viên</p>
+        <a href="/members" class="btn">📊 Xem Danh Sách</a>
+      </div>
+      <div class="card">
+        <h3>� Thanh Toán</h3>
+        <p>Ghi nhận & theo dõi thanh toán hội viên</p>
+        <a href="/receptionist/payments" class="btn">💰 Thanh Toán</a>
+      </div>
+      <div class="card">
+        <h3>✅ Lịch Tham Dự</h3>
+        <p>Xem check-in/check-out hôm nay của hội viên</p>
+        <a href="/receptionist/attendance" class="btn">✅ Tham Dự</a>
+      </div>
+      <div class="card">
+        <h3>�📈 Thống Kê Truy Cập</h3>
+        <p>Theo dõi mật độ tầng theo giờ, cảnh báo quá tải</p>
+        <a href="/dashboard" class="btn">📉 Xem Thống Kê</a>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/logout" class="logout">🚪 Đăng Xuất</a>
+    </div>
+  </div>
+</body>
+</html>

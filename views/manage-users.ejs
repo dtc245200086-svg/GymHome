@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .form-section {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 40px;
+      border: 2px solid #ff6b35;
+    }
+    .form-section h2 {
+      color: #ffd700;
+      margin-top: 0;
+      font-size: 1.4em;
+    }
+    .form-group {
+      margin: 15px 0;
+    }
+    .form-group label {
+      display: block;
+      color: #ffd700;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ff6b35;
+      border-radius: 8px;
+      background: #1a1a1a;
+      color: white;
+      font-size: 1em;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #ffd700;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    }
+    .users-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    .users-table th {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+      color: white;
+      padding: 15px;
+      text-align: left;
+      font-weight: bold;
+    }
+    .users-table td {
+      padding: 15px;
+      border-bottom: 1px solid #ff6b35;
+      color: #ddd;
+    }
+    .users-table tr:hover {
+      background: rgba(255, 107, 53, 0.1);
+    }
+    .users-table tr:last-child td {
+      border-bottom: none;
+    }
+    .action-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .action-btns form {
+      display: inline;
+    }
+    .btn-small {
+      padding: 8px 12px;
+      font-size: 0.85em;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    .btn-reset {
+      background: #ff6b35;
+      color: white;
+    }
+    .btn-reset:hover {
+      background: #ff8c42;
+      transform: scale(1.05);
+    }
+    .btn-delete {
+      background: #d32f2f;
+      color: white;
+    }
+    .btn-delete:hover {
+      background: #f44336;
+      transform: scale(1.05);
+    }
+    .empty-state {
+      text-align: center;
+      color: #999;
+      padding: 40px;
+      font-size: 1.1em;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+      .action-btns {
+        flex-direction: column;
+      }
+      .action-btns form {
+        width: 100%;
+      }
+      .btn-small {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><%= title %></h1>
+    <p>Tạo, chỉnh sửa, xóa tài khoản</p>
+  </header>
+  
+  <div class="container">
+    <div class="grid-2">
+      <!-- Form Tạo Tài Khoản Mới -->
+      <div class="form-section">
+        <h2>➕ Tạo Tài Khoản Mới</h2>
+        <form method="POST" action="/admin/create-<%= role %>">
+          <div class="form-group">
+            <label>👤 Username (Tên Đăng Nhập)</label>
+            <input type="text" name="username" required placeholder="Nhập username">
+          </div>
+          <div class="form-group">
+            <label>🔐 Password (Mật Khẩu)</label>
+            <input type="password" name="password" required placeholder="Nhập mật khẩu">
+          </div>
+          <button type="submit" class="btn" style="width: 100;">✅ Tạo Tài Khoản</button>
+        </form>
+      </div>
+
+      <!-- Hướng Dẫn -->
+      <div class="form-section">
+        <h2>ℹ️ Hướng Dẫn Sử Dụng</h2>
+        <p style="color: #ffd700; font-weight: bold;">Quản Lý Tài Khoản:</p>
+        <ul style="color: #ccc; line-height: 1.8;">
+          <li>📝 <strong>Tạo mới:</strong> Điền username & password, bấm Tạo</li>
+          <li>🔑 <strong>Reset mật khẩu:</strong> Bấm nút <span style="color: #ff6b35;">Đổi Mật Khẩu</span>, nhập mật khẩu mới</li>
+          <li>🗑️ <strong>Xóa tài khoản:</strong> Bấm nút <span style="color: #d32f2f;">Xóa</span>, xác nhận</li>
+          <li>✅ <strong>Lưu ý:</strong> Các thay đổi áp dụng ngay lập tức</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Danh Sách Tài Khoản -->
+    <h2 style="color: #ffd700; margin-top: 40px; margin-bottom: 20px;">📋 Danh Sách Tài Khoản Hiện Tại</h2>
+    
+    <% if (users && users.length > 0) { %>
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>👤 Username</th>
+            <th>🔐 Mật Khẩu (Hiển Thị)</th>
+            <th>📌 Vai Trò</th>
+            <th>⚙️ Hành Động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach(user => { %>
+            <tr>
+              <td><strong>#<%= user.id %></strong></td>
+              <td><%= user.username %></td>
+              <td><code style="background: #1a1a1a; padding: 5px 8px; border-radius: 4px; color: #ffd700;"><%= user.password %></code></td>
+              <td>
+                <% if (role === 'member') { %>
+                  👥 Hội Viên
+                <% } else if (role === 'receptionist') { %>
+                  🎫 Lễ Tân
+                <% } else if (role === 'pt') { %>
+                  🏃 PT
+                <% } %>
+              </td>
+              <td>
+                <div class="action-btns">
+                  <button class="btn-small btn-reset" onclick="resetPassword(<%= user.id %>, '<%= role %>')">🔑 Đổi MK</button>
+                  <form method="POST" action="/admin/delete-user/<%= user.id %>" style="margin: 0;" onsubmit="return confirm('Xác nhận xóa tài khoản này?');">
+                    <button type="submit" class="btn-small btn-delete">🗑️ Xóa</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <div class="empty-state">
+        <p>📭 Chưa có tài khoản nào</p>
+        <p>Tạo tài khoản mới từ form bên trên</p>
+      </div>
+    <% } %>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/admin/dashboard" class="btn">↩️ Quay Lại Dashboard</a>
+    </div>
+  </div>
+
+  <script>
+    function resetPassword(userId, role) {
+      const newPassword = prompt('Nhập mật khẩu mới:');
+      if (!newPassword) return;
+      
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/admin/reset-password/${userId}`;
+      
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'newPassword';
+      input.value = newPassword;
+      
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+    }
+  </script>
+</body>
+</html>

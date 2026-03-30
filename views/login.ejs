@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔑 Đăng Nhập - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .login-container {
+      max-width: 500px;
+      margin: 40px auto;
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+    }
+    .login-form {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+      border-top: 5px solid #ff6b35;
+      border-left: 5px solid #ffd700;
+    }
+    .login-form h2 {
+      text-align: center;
+      margin-top: 0;
+      color: #ffd700;
+      font-size: 1.5em;
+      margin-bottom: 30px;
+    }
+    .demo-accounts {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 25px;
+      border-radius: 15px;
+      border: 2px solid #ffd700;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+    .demo-accounts h3 {
+      color: #ffd700;
+      text-align: center;
+      margin-top: 0;
+      font-size: 1.2em;
+    }
+    .demo-accounts table {
+      width: 100%;
+      box-shadow: none;
+    }
+    .demo-accounts th {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    }
+    .demo-accounts td {
+      background: transparent;
+      color: #ccc;
+    }
+    .code-block {
+      background: #1a1a1a;
+      padding: 8px 12px;
+      border-radius: 5px;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      display: inline-block;
+      border-left: 3px solid #ff6b35;
+    }
+    .back-link {
+      text-align: center;
+    }
+    .back-link a {
+      color: #ff6b35;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: inline-block;
+      padding: 10px 20px;
+      border: 2px solid #ff6b35;
+      border-radius: 20px;
+    }
+    .back-link a:hover {
+      background: rgba(255, 107, 53, 0.1);
+      color: #ffb86c;
+      border-color: #ffb86c;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏋️ GYM HOME - ĐĂNG NHẬP 🔐</h1>
+    <p>Hệ Thống Quản Lý Phòng Tập Hiện Đại</p>
+  </header>
+
+  <div class="container">
+    <div class="login-container">
+      <div class="login-form">
+        <h2>🔓 Đăng Nhập Hệ Thống</h2>
+        <form action="/login" method="post">
+          <label for="username">👤 Tên Đăng Nhập:</label>
+          <input type="text" id="username" name="username" placeholder="Nhập tên đăng nhập" required>
+
+          <label for="password">🔐 Mật Khẩu:</label>
+          <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" required>
+
+          <button type="submit">🚀 Đăng Nhập</button>
+        </form>
+      </div>
+
+      <div class="demo-accounts">
+        <h3>📋 Tài Khoản Demo Để Test</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>👤 Vai Trò</th>
+              <th>Username</th>
+              <th>Password</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong style="color: #ff6b35;">⚙️ Admin</strong></td>
+              <td><span class="code-block">admin</span></td>
+              <td><span class="code-block">admin</span></td>
+            </tr>
+            <tr>
+              <td><strong style="color: #ff6b35;">🎫 Lễ Tân</strong></td>
+              <td><span class="code-block">letan</span></td>
+              <td><span class="code-block">letan</span></td>
+            </tr>
+            <tr>
+              <td><strong style="color: #ff6b35;">🏃 PT Coach</strong></td>
+              <td><span class="code-block">pt</span></td>
+              <td><span class="code-block">pt</span></td>
+            </tr>
+            <tr>
+              <td><strong style="color: #ff6b35;">👥 Hội Viên</strong></td>
+              <td><span class="code-block">member</span></td>
+              <td><span class="code-block">member</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="back-link">
+        <a href="/">← Quay Lại Trang Chủ</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

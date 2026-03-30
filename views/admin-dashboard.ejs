@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚙️ Dashboard Admin - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>⚙️ ADMIN DASHBOARD 🔧</h1>
+    <p>Quản Lý Hệ Thống - Điều Khiển Toàn Bộ Phòng Tập</p>
+  </header>
+  <div class="container">
+    <div style="background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 40px; box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);">
+      <h2 style="color: white; margin: 0; font-size: 1.8em;">👋 Chào Mừng Quản Trị Viên</h2>
+      <p style="color: rgba(255, 255, 255, 0.9); margin-top: 10px;">Hệ Thống GymHome Đang Hoạt Động Bình Thường</p>
+    </div>
+    <div class="dashboard-grid">
+      <div class="card">
+        <h3>🔐 Quét Thẻ Vào Cửa</h3>
+        <p>Điểm quét QR trực tiếp - Nhận thông báo + thông tin hội viên</p>
+        <a href="/scanner" class="btn">🔐 Mở Quét Thẻ</a>
+      </div>
+      <div class="card">
+        <h3>⚙️ Cấu Hình Thiết Bị</h3>
+        <p>Quản lý thiết bị QR tại 5 tầng, cấu hình địa chỉ IP</p>
+        <a href="/admin/devices" class="btn">⚙️ Truy Cập Cấu Hình</a>
+      </div>
+      <div class="card">
+        <h3>📊 Báo Cáo Doanh Thu</h3>
+        <p>Xem thống kê hội viên, buổi tập, truy cập hàng giờ</p>
+        <a href="/admin/reports" class="btn">📈 Xem Báo Cáo</a>
+      </div>
+      <div class="card">
+        <h3>⚠️ Cảnh Báo Hệ Thống</h3>
+        <p>Theo dõi thẻ sắp hết hạn và buổi PT sắp hết</p>
+        <a href="/admin/alerts" class="btn">🚨 Xem Cảnh Báo</a>
+      </div>      <div class="card">
+        <h3>📈 Sức Chứa Tầng</h3>
+        <p>Quản lý & theo dõi công suất mỗi tầng</p>
+        <a href="/admin/floor-capacity" class="btn">📈 Sức Chứa</a>
+      </div>
+      <div class="card">
+        <h3>🔄 Gia Hạn Thẻ</h3>
+        <p>Quản lý gia hạn thẻ hội viên hết hạn</p>
+        <a href="/admin/renewals" class="btn">🔄 Gia Hạn</a>
+      </div>
+      <div class="card">
+        <h3>👥 Quản Lý Hội Viên</h3>
+        <p>Cấp tài khoản, reset mật khẩu, kiểm soát quyền truy cập</p>
+        <a href="/admin/manage-members" class="btn">👥 Quản Lý</a>
+      </div>
+      <div class="card">
+        <h3>🎫 Quản Lý Lễ Tân</h3>
+        <p>Tạo tài khoản, quản lý quyền lễ tân staff</p>
+        <a href="/admin/manage-receptionists" class="btn">🎫 Quản Lý</a>
+      </div>
+      <div class="card">
+        <h3>🏃 Quản Lý PT</h3>
+        <p>Tạo tài khoản, quản lý danh sách HLV</p>
+        <a href="/admin/manage-pts" class="btn">🏃 Quản Lý</a>
+      </div>
+    </div>
+      <div class="card">
+        <h3>📊 Thống Kê Hội Viên</h3>
+        <p>Phân tích hoạt động & tần suất visit</p>
+        <a href="/admin/member-stats" class="btn">📊 Thống Kê</a>
+      </div>    </div>
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/logout" class="logout">🚪 Đăng Xuất</a>
+    </div>
+  </div>
+</body>
+</html>

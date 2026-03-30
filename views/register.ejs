@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng ký hội viên</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Đăng ký hội viên mới</h1>
+  </header>
+  <div class="container">
+    <form action="/register" method="post">
+      <label for="name">Họ tên:</label>
+      <input type="text" id="name" name="name" required>
+
+      <label for="phone">Số điện thoại:</label>
+      <input type="tel" id="phone" name="phone" pattern="0[0-9]{9}" placeholder="0123456789" title="10 chữ số, bắt đầu 0, số mạng hợp lệ" required>
+
+      <label for="type">Loại hội viên:</label>
+      <select id="type" name="type" required>
+        <option value="Trial">Thử nghiệm</option>
+        <option value="Regular">Thường</option>
+        <option value="VIP">VIP</option>
+      </select>
+
+      <label for="expiry">Ngày hết hạn:</label>
+      <input type="date" id="expiry" name="expiry" required>
+
+      <label for="pt_sessions">Số buổi PT:</label>
+      <input type="number" id="pt_sessions" name="pt_sessions" min="0">
+
+      <button type="submit">Đăng ký</button>
+    </form>
+    <a href="/">Quay lại trang chủ</a>
+  </div>
+</body>
+</html>

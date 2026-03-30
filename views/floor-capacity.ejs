@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📊 Quản Lý Sức Chứa Tầng - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .capacity-card {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      border-left: 5px solid #ffd700;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 25px;
+      background: #1a1a1a;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4caf50, #8bc34a);
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: black;
+      font-weight: bold;
+      font-size: 0.9em;
+    }
+    .progress-fill.warning {
+      background: linear-gradient(90deg, #ff9800, #ffb74d);
+    }
+    .progress-fill.danger {
+      background: linear-gradient(90deg, #ff6b35, #ff5252);
+    }
+    .capacity-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+    }
+    .capacity-info strong {
+      color: #ffd700;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📊 QUẢN LÝ SỨC CHỨA TẦNG 🏢</h1>
+    <p>Theo Dõi & Cập Nhật Công Suất Mỗi Tầng</p>
+  </header>
+
+  <div class="container">
+    <h2>📈 Trạng Thái Sức Chứa Theo Tầng</h2>
+    
+    <% floors.forEach(floor => { %>
+      <div class="capacity-card">
+        <div class="capacity-info">
+          <span>🏢 <strong>TẦNG <%= floor.floor %></strong></span>
+          <span><% if (floor.is_full) { %>🚨 ĐẦY<% } else if (floor.usage_percent > 70) { %>⚠️ GẦN ĐẦY<% } else { %>✅ BÌNH THƯỜNG<% } %></span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill <% if (floor.usage_percent > 90) { %>danger<% } else if (floor.usage_percent > 70) { %>warning<% } %>" 
+               style="width: <%= Math.min(floor.usage_percent, 100) %>%">
+            <%= floor.usage_percent %>%
+          </div>
+        </div>
+        <div class="capacity-info">
+          <span>👥 Hiện tại: <strong><%= floor.current_count %></strong> / <%= floor.max_capacity %></span>
+          <span>📊 <strong><%= floor.usage_percent %>%</strong> sức chứa</span>
+        </div>
+        
+        <form method="post" action="/admin/floor-capacity/<%= floor.floor %>" style="margin-top: 15px;">
+          <label for="max_<%= floor.floor %>">Cập nhật sức chứa tối đa:</label>
+          <input type="number" id="max_<%= floor.floor %>" name="max_capacity" value="<%= floor.max_capacity %>" min="1" required>
+          <button type="submit">💾 Cập Nhật</button>
+        </form>
+      </div>
+    <% }); %>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/admin/dashboard" class="btn">← Quay Lại Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>

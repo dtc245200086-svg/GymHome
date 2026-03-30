@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Dashboard truy cập</h1>
+  </header>
+  <div class="container">
+    <h2>Mật độ truy cập theo tầng</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Tầng</th>
+          <th>Số lần truy cập</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% data.forEach(item => { %>
+          <tr>
+            <td><%= item.floor %></td>
+            <td><%= item.count %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <br>
+    <a href="/">Quay lại trang chủ</a>
+  </div>
+</body>
+</html>

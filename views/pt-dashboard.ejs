@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏃 Dashboard PT - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>🏃 PT COACH DASHBOARD 💪</h1>
+    <p>Quản Lý Buổi Tập - Xác Nhận & Theo Dõi</p>
+  </header>
+  <div class="container">
+    <div style="background: linear-gradient(135deg, #ff6b35 0%, #d84315 100%); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 40px; box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);">
+      <h2 style="color: white; margin: 0; font-size: 1.8em;">💪 Chào Mừng PT Coach</h2>
+      <p style="color: rgba(255, 255, 255, 0.9); margin-top: 10px;">Quản Lý & Xác Nhận Buổi Tập Của Các Hội Viên</p>
+    </div>
+    <div class="dashboard-grid">
+      <div class="card">
+        <h3>🏋️ Quản Lý Buổi Tập</h3>
+        <p>Xem danh sách buổi tập, xác nhận với hội viên</p>
+        <a href="/pt" class="btn">📋 Quản Lý Buổi</a>
+      </div>
+      <div class="card">
+        <h3>👥 Danh Sách Hội Viên</h3>
+        <p>Xem thông tin chi tiết hội viên của bạn</p>
+        <a href="/members" class="btn">👤 Xem Danh Sách</a>
+      </div>
+      <div class="card">
+        <h3>📊 Thống Kê Buổi PT</h3>
+        <p>Xem số buổi PT đã xác nhận</p>
+        <a href="/admin/reports" class="btn">📈 Thống Kê</a>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/logout" class="logout">🚪 Đăng Xuất</a>
+    </div>
+  </div>
+</body>
+</html>

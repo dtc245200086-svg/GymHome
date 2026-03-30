@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>✅ Lịch Tham Dự - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>✅ LỊCH THAM DỰ HÔM NAY ⏰</h1>
+    <p>Theo Dõi Check-In & Check-Out Hội Viên</p>
+  </header>
+
+  <div class="container">
+    <div class="card" style="text-align: center; background: linear-gradient(135deg, #2196F3 0%, #42a5f5 100%); border: none; margin-bottom: 30px;">
+      <h2 style="color: white; margin: 0;">📅 Ngày: <%= today %></h2>
+      <p style="color: rgba(255,255,255,0.9); font-size: 1.3em; margin: 10px 0;"><strong>👥 <%= records.length %> hội viên đã check-in</strong></p>
+    </div>
+
+    <h2>📊 Danh Sách Check-In/Check-Out</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>👤 Hội Viên</th>
+          <th>📞 Điện Thoại</th>
+          <th>🔓 Check-In</th>
+          <th>🔒 Check-Out</th>
+          <th>⏱️ Thời Gian</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% records.forEach((r, i) => { %>
+          <tr>
+            <td><strong><%= i + 1 %></strong></td>
+            <td><strong><%= r.name %></strong></td>
+            <td><%= r.phone %></td>
+            <td style="color: #4caf50; font-weight: bold;"><%= r.check_in_time %></td>
+            <td style="color: <%= r.check_out_time ? '#ff9800' : '#999' %>;">
+              <% if (r.check_out_time) { %>
+                <%= r.check_out_time %>
+              <% } else { %>
+                Chưa checkout
+              <% } %>
+            </td>
+            <td>
+              <% if (r.check_out_time) { %>
+                Xong
+              <% } else { %>
+                <span style="color: #2196F3; font-weight: bold;">Đang tập</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <% if (records.length === 0) { %>
+      <div class="alert alert-danger" style="text-align: center; margin-top: 30px;">
+        <strong>Chưa có hội viên check-in hôm nay</strong>
+      </div>
+    <% } %>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/admin/dashboard" class="btn">← Quay Lại Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>

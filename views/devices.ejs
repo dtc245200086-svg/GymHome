@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cấu hình thiết bị</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Cấu hình thiết bị cửa</h1>
+  </header>
+  <div class="container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tầng</th>
+          <th>Địa chỉ IP</th>
+          <th>Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% devices.forEach(device => { %>
+          <tr>
+            <td><%= device.id %></td>
+            <td><%= device.floor %></td>
+            <td>
+              <form action="/admin/devices/<%= device.id %>" method="post" style="display:flex; align-items:center;">
+                <input type="text" name="ip" value="<%= device.ip %>" pattern="^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$" placeholder="192.168.1.1" title="Định dạng IPv4: xxx.xxx.xxx.xxx" style="flex:1; margin-right:10px;">
+                <button type="submit">Cập nhật</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <br>
+    <a href="/">Quay lại trang chủ</a>
+  </div>
+</body>
+</html>

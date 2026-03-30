@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Báo cáo</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Báo cáo doanh thu</h1>
+  </header>
+  <div class="container">
+    <div class="alert alert-success">
+      <h2>Thống kê tổng quan</h2>
+      <p><strong>Tổng doanh thu:</strong> <%= revenue %> VND</p>
+      <p><strong>Số hội viên:</strong> <%= members %></p>
+      <p><strong>Tổng lần truy cập:</strong> <%= accesses %></p>
+      <p><strong>Buổi tập PT xác nhận:</strong> <%= pt_confirmed %></p>
+    </div>
+    <br>
+    <a href="/">Quay lại trang chủ</a>
+  </div>
+</body>
+</html>

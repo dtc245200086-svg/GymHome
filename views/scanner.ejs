@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚪 Quét QR Thẻ - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .scanner-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      min-height: 80vh;
+      justify-content: center;
+    }
+    .scanner-box {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 40px;
+      border-radius: 20px;
+      border: 4px solid #ffd700;
+      max-width: 500px;
+      box-shadow: 0 12px 40px rgba(255, 215, 0, 0.3);
+      text-align: center;
+    }
+    .scanner-title {
+      font-size: 2.5em;
+      color: #ffd700;
+      margin: 0 0 20px 0;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .input-area {
+      margin: 20px 0;
+    }
+    #qr_input {
+      width: 100%;
+      padding: 15px;
+      font-size: 1.2em;
+      border: 2px solid #ff6b35;
+      border-radius: 10px;
+      background: #1a1a1a;
+      color: white;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    #qr_input:focus {
+      outline: none;
+      border-color: #ffd700;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+    #floor_input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      border: 2px solid #ff6b35;
+      border-radius: 8px;
+      background: #1a1a1a;
+      color: white;
+      font-size: 1.1em;
+    }
+    .notification {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 30px 20px;
+      text-align: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      animation: slideDown 0.3s ease-out;
+      z-index: 1000;
+      border-bottom: 4px solid;
+    }
+    @keyframes slideDown {
+      from {
+        transform: translateY(-200px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    .notification.success {
+      background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
+      border-bottom-color: #388e3c;
+      color: white;
+    }
+    .notification.error {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff5252 100%);
+      border-bottom-color: #d32f2f;
+      color: white;
+    }
+    .notification.expired {
+      background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
+      border-bottom-color: #e65100;
+      color: white;
+    }
+    .notification.restricted {
+      background: linear-gradient(135deg, #2196F3 0%, #64B5F6 100%);
+      border-bottom-color: #1565c0;
+      color: white;
+    }
+    .member-details {
+      background: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 15px;
+      font-size: 0.95em;
+    }
+    .member-details p {
+      margin: 8px 0;
+    }
+    .instruction-text {
+      color: #ffd700;
+      font-size: 1.1em;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="scanner-container">
+    <div class="scanner-box">
+      <h1 class="scanner-title">🔐 QUÉT MÃ QR</h1>
+      <p style="color: #ccc; font-size: 1.1em;">Điểm quét thẻ vào phòng tập</p>
+      
+      <div class="input-area">
+        <input 
+          type="hidden" 
+          id="qr_input" 
+          placeholder="Camera quét QR tự động..."
+          autofocus
+        >
+        
+        <select id="floor_input" required>
+          <option value="">📍 Chọn tầng</option>
+          <option value="1">Tầng 1 - Yoga & Stretching</option>
+          <option value="2">Tầng 2 - Cardio & Weights</option>
+          <option value="3">Tầng 3 - PT Training</option>
+          <option value="4">Tầng 4 - VIP Lounge</option>
+          <option value="5">Tầng 5 - Admin</option>
+        </select>
+
+        <p class="instruction-text">📱 Đưa điện thoại gần camera để quét</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const qrInput = document.getElementById('qr_input');
+    const floorSelect = document.getElementById('floor_input');
+    let isProcessing = false;
+
+    // Handle QR scan
+    qrInput.addEventListener('change', async (e) => {
+      if (isProcessing) return;
+      isProcessing = true;
+
+      const qrData = e.target.value.trim();
+      const floor = floorSelect.value;
+
+      if (!qrData || !floor) {
+        showNotification('❌ Vui lòng quét QR và chọn tầng', 'error');
+        isProcessing = false;
+        qrInput.value = '';
+        return;
+      }
+
+      try {
+        const response = await fetch('/access', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ qr_data: qrData, floor: parseInt(floor) })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showNotification(result.message, 'success');
+          playSuccessSound();
+          showMemberDetails(result.member, result.floor, result.timestamp);
+        } else {
+          showNotification(result.message, result.type || 'error');
+          playErrorSound();
+          if (result.member) {
+            showMemberDetails(result.member, floor);
+          }
+        }
+
+        // Clear input after 3 seconds
+        setTimeout(() => {
+          qrInput.value = '';
+          isProcessing = false;
+        }, 3000);
+
+      } catch (err) {
+        showNotification('❌ Lỗi kết nối - ' + err.message, 'error');
+        playErrorSound();
+        isProcessing = false;
+        qrInput.value = '';
+      }
+    });
+
+    function showNotification(message, type) {
+      const existing = document.querySelector('.notification');
+      if (existing) existing.remove();
+
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      document.body.appendChild(notification);
+
+      setTimeout(() => {
+        notification.style.animation = 'slideDown 0.3s ease-out reverse';
+        setTimeout(() => notification.remove(), 300);
+      }, 4000);
+    }
+
+    function showMemberDetails(member, floor, timestamp) {
+      const scanner = document.querySelector('.scanner-box');
+      const existing = document.querySelector('.member-details');
+      if (existing) existing.remove();
+
+      const details = document.createElement('div');
+      details.className = 'member-details';
+      details.innerHTML = `
+        <strong>👤 ${member.name}</strong><br>
+        📞 ${member.phone}<br>
+        🎯 Loại: ${member.type}<br>
+        📅 Hạn: ${member.expiry}<br>
+        🏋️ PT còn: ${member.pt_sessions} buổi<br>
+        🔓 Vào: <span style="color: #ffd700;">${timestamp || new Date().toLocaleTimeString('vi-VN')}</span>
+      `;
+      scanner.appendChild(details);
+
+      setTimeout(() => {
+        if (existing) existing.remove();
+      }, 5000);
+    }
+
+    function playSuccessSound() {
+      // Tạo tiếng thành công bằng Web Audio API
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    }
+
+    function playErrorSound() {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(200, audioContext.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    }
+
+    // Auto-focus input
+    window.addEventListener('load', () => {
+      qrInput.focus();
+    });
+  </script>
+</body>
+</html>

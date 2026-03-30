@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔄 Gia Hạn Thẻ - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>🔄 QUẢN LÝ GIA HẠN THẺ 📅</h1>
+    <p>Theo Dõi & Gia Hạn Thẻ Hội Viên Hết Hạn</p>
+  </header>
+
+  <div class="container">
+    <h2>📋 Danh Sách Gia Hạn</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>👤 Hội Viên</th>
+          <th>📞 Điện Thoại</th>
+          <th>🎯 Loại</th>
+          <th>📅 Hạn Hiện Tại</th>
+          <th>⏰ Trạng Thái</th>
+          <th>🔄 Gia Hạn</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% members.forEach(member => { %>
+          <tr style="<% if (member.status === 'expired') { %>background: rgba(255, 107, 53, 0.15);<% } else if (member.status === 'expiring_soon') { %>background: rgba(255, 152, 0, 0.15);<% } %>">
+            <td><strong><%= member.name %></strong></td>
+            <td><%= member.phone %></td>
+            <td><%= member.type %></td>
+            <td><%= member.expiry %></td>
+            <td>
+              <% if (member.status === 'expired') { %>
+                <span style="color: #ff6b35; font-weight: bold;">🚨 ĐÃ HẾT HẠN</span>
+              <% } else if (member.status === 'expiring_soon') { %>
+                <span style="color: #ff9800; font-weight: bold;">⚠️ SẮP HẾT HẠN</span>
+              <% } else { %>
+                <span style="color: #4caf50; font-weight: bold;">✅ CÒN HIỆU LỰC</span>
+              <% } %>
+            </td>
+            <td>
+              <form method="post" action="/admin/renew/<%= member.id %>" style="display: inline;">
+                <input type="date" name="new_expiry" required min="<% const today = new Date(); const year = today.getFullYear(); const month = String(today.getMonth() + 1).padStart(2, '0'); const day = String(today.getDate()).padStart(2, '0'); const oneYearLater = new Date(today); oneYearLater.setFullYear(year + 1); const futureYear = oneYearLater.getFullYear(); const futureMonth = String(oneYearLater.getMonth() + 1).padStart(2, '0'); const futureDay = String(oneYearLater.getDate()).padStart(2, '0'); %>{{ year }}-<%= month %>-<%= day %>">
+                <button type="submit" style="width: auto; display: inline; padding: 8px 15px;">gia hạn</button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/admin/dashboard" class="btn">← Quay Lại Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>
