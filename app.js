@@ -1,5 +1,6 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const qrcode = require('qrcode');
 const bodyParser = require('body-parser');
 const session = require('express-session');
@@ -11,110 +12,210 @@ app.use(express.static('public'));
 
 // Session middleware
 app.use(session({
-  secret: 'gymhome-secret-key',
+  secret: process.env.SESSION_SECRET || 'gymhome-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
 }));
 
 // Database
-const db = new sqlite3.Database('./gymhome.db');
+const usePg = !!process.env.DATABASE_URL;
+let sqliteDb;
+let pgPool;
+
+function replaceSqliteFunctions(sql) {
+  if (!usePg) return sql;
+  return sql
+    .replace(/datetime\('now'\)/g, 'NOW()')
+    .replace(/date\('now'\)/g, 'CURRENT_DATE')
+    .replace(/date\('now', '\+30 days'\)/g, "CURRENT_DATE + INTERVAL '30 days'");
+}
+
+function toPgPlaceholders(sql, params) {
+  if (!params || params.length === 0) return { sql, params };
+  let idx = 0;
+  const text = sql.replace(/\?/g, () => `$${++idx}`);
+  return { sql: text, params };
+}
+
+const db = {
+  run(sql, params = [], callback) {
+    if (usePg) {
+      const normalized = replaceSqliteFunctions(sql);
+      const { sql: queryText, params: queryParams } = toPgPlaceholders(normalized, params);
+      return pgPool.query(queryText, queryParams)
+        .then(res => callback && callback(null, res))
+        .catch(err => callback && callback(err));
+    }
+    return sqliteDb.run(sql, params, function (err) {
+      if (callback) callback(err, this);
+    });
+  },
+  get(sql, params = [], callback) {
+    if (usePg) {
+      const normalized = replaceSqliteFunctions(sql);
+      const { sql: queryText, params: queryParams } = toPgPlaceholders(normalized, params);
+      return pgPool.query(queryText, queryParams)
+        .then(res => callback && callback(null, res.rows[0]))
+        .catch(err => callback && callback(err));
+    }
+    return sqliteDb.get(sql, params, callback);
+  },
+  all(sql, params = [], callback) {
+    if (usePg) {
+      const normalized = replaceSqliteFunctions(sql);
+      const { sql: queryText, params: queryParams } = toPgPlaceholders(normalized, params);
+      return pgPool.query(queryText, queryParams)
+        .then(res => callback && callback(null, res.rows))
+        .catch(err => callback && callback(err));
+    }
+    return sqliteDb.all(sql, params, callback);
+  },
+  serialize(cb) {
+    if (usePg) return cb();
+    return sqliteDb.serialize(cb);
+  }
+};
+
+if (usePg) {
+  pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+} else {
+  sqliteDb = new sqlite3.Database('./gymhome.db');
+}
 
 // Init DB
-db.serialize(() => {
+function initSchema() {
   db.run(`CREATE TABLE IF NOT EXISTS members (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     name TEXT,
     phone TEXT,
     type TEXT,
     expiry DATE,
     pt_sessions INTEGER DEFAULT 0
-  )`);
+  )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS access_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     member_id INTEGER,
     floor INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS devices (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     floor INTEGER,
     ip TEXT
-  )`);
+  )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS pt_sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     member_id INTEGER,
     pt_id INTEGER,
     date DATE,
-    confirmed BOOLEAN DEFAULT 0
-  )`);
+    confirmed BOOLEAN DEFAULT FALSE
+  )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS floor_capacity (
     floor INTEGER PRIMARY KEY,
     max_capacity INTEGER DEFAULT 50,
     current_count INTEGER DEFAULT 0
-  )`);
+  )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     username TEXT,
     password TEXT,
     role TEXT
-  )`);
+  )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS qr_codes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     member_id INTEGER,
     qr_data TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expires_at DATETIME,
-    used BOOLEAN DEFAULT 0
-  )`);
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP,
+    used BOOLEAN DEFAULT FALSE
+  )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS payments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     member_id INTEGER,
     amount REAL,
     type TEXT,
     date DATE DEFAULT CURRENT_DATE,
     status TEXT DEFAULT 'completed'
-  )`);
+  )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS attendance (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     member_id INTEGER,
     date DATE,
     check_in_time TIME,
     check_out_time TIME
-  )`);
+  )`, []);
+}
 
-  // Insert mock data if empty
-  db.get(`SELECT COUNT(*) as count FROM members`, [], (err, row) => {
-    if (row.count === 0) {
-      db.run(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES ('Nguyen Van A', '0123456789', 'Regular', '2026-12-31', 10)`);
-      db.run(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES ('Tran Thi B', '0987654321', 'VIP', '2026-12-31', 20)`);
-    }
-  });
-  db.get(`SELECT COUNT(*) as count FROM devices`, [], (err, row) => {
-    if (row.count === 0) {
-      for (let i = 1; i <= 5; i++) {
-        db.run(`INSERT INTO devices (floor, ip) VALUES (?, ?)`, [i, `192.168.1.${i}`]);
+initSchema();
+
+if (!usePg) {
+  db.serialize(() => {
+    db.get(`SELECT COUNT(*) as count FROM members`, [], (err, row) => {
+      if (row && row.count === 0) {
+        db.run(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES ('Nguyen Van A', '0123456789', 'Regular', '2026-12-31', 10)`);
+        db.run(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES ('Tran Thi B', '0987654321', 'VIP', '2026-12-31', 20)`);
       }
-    }
+    });
+    db.get(`SELECT COUNT(*) as count FROM devices`, [], (err, row) => {
+      if (row && row.count === 0) {
+        for (let i = 1; i <= 5; i++) {
+          db.run(`INSERT INTO devices (floor, ip) VALUES (?, ?)`, [i, `192.168.1.${i}`]);
+        }
+      }
+    });
+    db.get(`SELECT COUNT(*) as count FROM pt_sessions`, [], (err, row) => {
+      if (row && row.count === 0) {
+        db.run(`INSERT INTO pt_sessions (member_id, pt_id, date) VALUES (1, 1, '2026-03-29')`);
+      }
+    });
+    db.get(`SELECT COUNT(*) as count FROM users`, [], (err, row) => {
+      if (row && row.count === 0) {
+        db.run(`INSERT INTO users (username, password, role) VALUES ('admin', 'admin', 'admin')`);
+        db.run(`INSERT INTO users (username, password, role) VALUES ('letan', 'letan', 'receptionist')`);
+        db.run(`INSERT INTO users (username, password, role) VALUES ('pt', 'pt', 'pt')`);
+        db.run(`INSERT INTO users (username, password, role) VALUES ('member', 'member', 'member')`);
+      }
+    });
   });
-  db.get(`SELECT COUNT(*) as count FROM pt_sessions`, [], (err, row) => {
-    if (row.count === 0) {
-      db.run(`INSERT INTO pt_sessions (member_id, pt_id, date) VALUES (1, 1, '2026-03-29')`);
+} else {
+  // PostgreSQL default records in async block
+  (async () => {
+    try {
+      const { rows } = await pgPool.query(`SELECT COUNT(*)::int as count FROM members`);
+      if (rows[0].count === 0) {
+        await pgPool.query(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES ('Nguyen Van A', '0123456789', 'Regular', '2026-12-31', 10)`);
+        await pgPool.query(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES ('Tran Thi B', '0987654321', 'VIP', '2026-12-31', 20)`);
+      }
+      const devices = await pgPool.query(`SELECT COUNT(*)::int as count FROM devices`);
+      if (devices.rows[0].count === 0) {
+        for (let i = 1; i <= 5; i++) {
+          await pgPool.query(`INSERT INTO devices (floor, ip) VALUES ($1, $2)`, [i, `192.168.1.${i}`]);
+        }
+      }
+      const pts = await pgPool.query(`SELECT COUNT(*)::int as count FROM pt_sessions`);
+      if (pts.rows[0].count === 0) {
+        await pgPool.query(`INSERT INTO pt_sessions (member_id, pt_id, date) VALUES ($1, $2, $3)`, [1, 1, '2026-03-29']);
+      }
+      const users = await pgPool.query(`SELECT COUNT(*)::int as count FROM users`);
+      if (users.rows[0].count === 0) {
+        await pgPool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`, ['admin', 'admin', 'admin']);
+        await pgPool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`, ['letan', 'letan', 'receptionist']);
+        await pgPool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`, ['pt', 'pt', 'pt']);
+        await pgPool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`, ['member', 'member', 'member']);
+      }
+    } catch (error) {
+      console.error('Lỗi khởi tạo dữ liệu PostgreSQL:', error);
     }
-  });
-  db.get(`SELECT COUNT(*) as count FROM users`, [], (err, row) => {
-    if (row.count === 0) {
-      db.run(`INSERT INTO users (username, password, role) VALUES ('admin', 'admin', 'admin')`);
-      db.run(`INSERT INTO users (username, password, role) VALUES ('letan', 'letan', 'receptionist')`);
-      db.run(`INSERT INTO users (username, password, role) VALUES ('pt', 'pt', 'pt')`);
-      db.run(`INSERT INTO users (username, password, role) VALUES ('member', 'member', 'member')`);
-    }
-  });
-});
+  })();
+}
 
 // Clean expired QR codes periodically
 setInterval(() => {
-  db.run(`DELETE FROM qr_codes WHERE expires_at < datetime('now')`, [], (err) => {
+  db.run(`DELETE FROM qr_codes WHERE expires_at < ${usePg ? 'NOW()' : "datetime('now')"}`, [], (err) => {
     if (err) console.log('Error cleaning expired QR:', err);
   });
 }, 60 * 1000); // Every minute
