@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: gymhome
+    env: node
+    region: oregon
+    branch: master
+    root: GymHome_Demo
+    buildCommand: npm ci
+    startCommand: npm start
+    plan: free
