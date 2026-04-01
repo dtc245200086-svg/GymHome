@@ -45,9 +45,20 @@ app.use((req, res, next) => {
 });
 
 // Database
-const usePg = !!process.env.DATABASE_URL;
+const envDatabaseUrl = (process.env.DATABASE_URL || '').trim();
+let usePg = false;
 let sqliteDb;
 let pgPool;
+
+if (envDatabaseUrl) {
+  try {
+    new URL(envDatabaseUrl);
+    usePg = true;
+  } catch (err) {
+    console.warn('DATABASE_URL is invalid, falling back to SQLite:', err.message);
+    usePg = false;
+  }
+}
 
 function replaceSqliteFunctions(sql) {
   if (!usePg) return sql;
@@ -105,8 +116,18 @@ const db = {
 
 if (usePg) {
   pgPool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: envDatabaseUrl,
     ssl: { rejectUnauthorized: false }
+  });
+
+  pgPool.connect().then(client => {
+    console.log('PostgreSQL connection OK');
+    client.release();
+  }).catch(err => {
+    console.error('Lỗi khởi tạo PostgreSQL:', err);
+    console.warn('Chuyển sang SQLite do PostgreSQL không sẵn sàng');
+    usePg = false;
+    sqliteDb = new sqlite3.Database('./gymhome.db');
   });
 } else {
   sqliteDb = new sqlite3.Database('./gymhome.db');
@@ -168,6 +189,15 @@ function initSchema() {
     type TEXT,
     date DATE DEFAULT CURRENT_DATE,
     status TEXT DEFAULT 'completed'
+  )`, []);
+  db.run(`CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER,
+    floor INTEGER,
+    message TEXT,
+    status TEXT,
+    origin TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS attendance (
     id SERIAL PRIMARY KEY,
@@ -322,6 +352,13 @@ function daysRemaining(expiryDate) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+function createNotification({ member_id = null, floor = null, message, status, origin }) {
+  db.run(`INSERT INTO notifications (member_id, floor, message, status, origin) VALUES (?, ?, ?, ?, ?)`,
+    [member_id, floor, message, status, origin], (err) => {
+      if (err) console.error('Lỗi lưu notification:', err);
+    });
+}
+
 // Middleware check auth
 function requireAuth(req, res, next) {
   if (req.session.user) {
@@ -457,76 +494,61 @@ app.get('/qr/:id', (req, res) => {
 app.post('/access', (req, res) => {
   const { qr_data, floor } = req.body;
   
-  // Check if QR exists and is valid
   const expiryCondition = usePg ? 'expires_at > NOW()' : "expires_at > datetime('now')";
   db.get(`SELECT * FROM qr_codes WHERE qr_data = ? AND used = 0 AND ${expiryCondition}`, [qr_data], (err, qr) => {
     if (err || !qr) {
-      return res.json({ 
-        success: false, 
-        message: '❌ QR không hợp lệ hoặc đã hết hạn',
-        type: 'invalid'
-      });
+      const message = '❌ QR không hợp lệ hoặc đã hết hạn';
+      createNotification({ member_id: null, floor: floor || null, message, status: 'fail', origin: 'scanner' });
+      return res.json({ success: false, message, type: 'invalid' });
     }
-    
+
     const member_id = qr.member_id;
     db.get(`SELECT * FROM members WHERE id = ?`, [member_id], (err, member) => {
       if (err || !member) {
-        return res.json({ 
-          success: false, 
-          message: '❌ Hội viên không tồn tại',
-          type: 'error'
-        });
+        const message = '❌ Hội viên không tồn tại';
+        createNotification({ member_id, floor: floor || null, message, status: 'fail', origin: 'scanner' });
+        return res.json({ success: false, message, type: 'error' });
       }
-      
+
       const today = new Date().toISOString().split('T')[0];
       if (new Date(member.expiry) < new Date(today)) {
-        return res.json({ 
-          success: false, 
-          message: '❌ Thẻ đã hết hạn - Vui lòng gia hạn',
-          type: 'expired',
-          member: member
-        });
+        const message = '❌ Thẻ đã hết hạn - Vui lòng gia hạn';
+        createNotification({ member_id, floor: parseInt(floor, 10), message, status: 'fail', origin: 'scanner' });
+        return res.json({ success: false, message, type: 'expired', member });
       }
-      
+
       const floorNumber = parseInt(floor, 10);
       if (member.type === 'Regular' && floorNumber > 3) {
-        return res.json({ 
-          success: false, 
-          message: `❌ Thẻ ${member.type} chỉ được vào tầng 1-3, không vào tầng ${floorNumber}`,
-          type: 'restricted',
-          member: member
-        });
+        const message = `❌ Thẻ ${member.type} chỉ được vào tầng 1-3, không vào tầng ${floorNumber}`;
+        createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
+        return res.json({ success: false, message, type: 'restricted', member });
       }
-      
-      // Mark QR as used
+
       db.run(`UPDATE qr_codes SET used = 1 WHERE id = ?`, [qr.id], (err) => {
         if (err) {
-          return res.json({ 
-            success: false, 
-            message: '❌ Lỗi cập nhật QR',
-            type: 'error'
-          });
+          const message = '❌ Lỗi cập nhật QR';
+          createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
+          return res.json({ success: false, message, type: 'error' });
         }
-        
-        // Log access
+
         db.run(`INSERT INTO access_logs (member_id, floor) VALUES (?, ?)`, [member_id, floorNumber], (err) => {
           if (err) {
-            return res.json({ 
-              success: false, 
-              message: '❌ Lỗi ghi log truy cập',
-              type: 'error'
-            });
+            const message = '❌ Lỗi ghi log truy cập';
+            createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
+            return res.json({ success: false, message, type: 'error' });
           }
-          
-          // Update floor capacity
+
           db.run(`UPDATE floor_capacity SET current_count = current_count + 1 WHERE floor = ?`, [floorNumber], (err) => {
             if (err) {
               console.log('Error updating floor capacity:', err);
             }
-            
-            res.json({ 
-              success: true, 
-              message: `✅ Chào mừng ${member.name}! Truy cập tầng ${floor}`,
+
+            const message = `✅ Chào mừng ${member.name}! Truy cập tầng ${floorNumber}`;
+            createNotification({ member_id, floor: floorNumber, message, status: 'success', origin: 'scanner' });
+
+            return res.json({
+              success: true,
+              message,
               type: 'success',
               member: {
                 name: member.name,
@@ -535,7 +557,7 @@ app.post('/access', (req, res) => {
                 expiry: member.expiry,
                 pt_sessions: member.pt_sessions
               },
-              floor: floor,
+              floor: floorNumber,
               timestamp: new Date().toLocaleTimeString('vi-VN')
             });
           });
@@ -998,7 +1020,12 @@ app.post('/login', (req, res) => {
   db.get(`SELECT * FROM users WHERE username = ? AND password = ?`, [username, password], (err, user) => {
     if (user) {
       if (user.role === 'member') {
+        let loginCompleted = false;
+
         const findMemberAndLogin = (member) => {
+          if (loginCompleted) return;
+          loginCompleted = true;
+
           if (member) {
             req.session.user = { id: user.id, username: user.username, role: 'member', member_id: member.id };
           } else {
@@ -1007,36 +1034,63 @@ app.post('/login', (req, res) => {
           return res.redirect('/member/dashboard');
         };
 
-        const queryMemberFallback = (done) => {
+        function queryMemberFallback() {
+          // Try by phone first
           if (user.phone) {
             db.get(`SELECT * FROM members WHERE phone = ?`, [user.phone], (err1, member1) => {
-              if (!err1 && member1) return done(member1);
+              if (!loginCompleted && member1) {
+                return findMemberAndLogin(member1);
+              }
+              // Try by username as phone
+              if (!loginCompleted) {
+                db.get(`SELECT * FROM members WHERE phone = ?`, [username], (err2, member2) => {
+                  if (!loginCompleted && member2) {
+                    return findMemberAndLogin(member2);
+                  }
+                  // Try by name
+                  if (!loginCompleted) {
+                    db.get(`SELECT * FROM members WHERE name = ?`, [username], (err3, member3) => {
+                      if (!loginCompleted) {
+                        findMemberAndLogin(member3);
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          } else {
+            // No phone - try by username as phone then by name
+            db.get(`SELECT * FROM members WHERE phone = ?`, [username], (err1, member1) => {
+              if (!loginCompleted && member1) {
+                return findMemberAndLogin(member1);
+              }
+              if (!loginCompleted) {
+                db.get(`SELECT * FROM members WHERE name = ?`, [username], (err2, member2) => {
+                  if (!loginCompleted) {
+                    findMemberAndLogin(member2);
+                  }
+                });
+              }
             });
           }
-          db.get(`SELECT * FROM members WHERE phone = ?`, [username], (err1, member1) => {
-            if (!err1 && member1) return done(member1);
+        }
 
-            db.get(`SELECT * FROM members WHERE name = ?`, [username], (err2, member2) => {
-              if (!err2 && member2) return done(member2);
-
-              db.get(`SELECT * FROM members WHERE id = ?`, [user.member_id || user.id], (err3, member3) => {
-                return done(member3);
-              });
-            });
-          });
-        };
-
+        // Try direct member_id first
         if (user.member_id) {
           db.get(`SELECT * FROM members WHERE id = ?`, [user.member_id], (err2, member) => {
-            if (!err2 && member) return findMemberAndLogin(member);
-            queryMemberFallback(findMemberAndLogin);
+            if (!loginCompleted && member) {
+              return findMemberAndLogin(member);
+            }
+            // If direct lookup fails, try fallback
+            if (!loginCompleted) queryMemberFallback();
           });
         } else {
-          queryMemberFallback(findMemberAndLogin);
+          queryMemberFallback();
         }
 
         return;
       }
+      
       req.session.user = user;
       if (user.role === 'admin') res.redirect('/admin/dashboard');
       else if (user.role === 'receptionist') res.redirect('/receptionist/dashboard');
@@ -1049,8 +1103,6 @@ app.post('/login', (req, res) => {
     db.get(`SELECT * FROM members WHERE phone = ?`, [username], (err, member) => {
       if (err || !member) return res.send('Đăng nhập không hợp lệ');
       
-      // For demo, accept any password for members, or check a default
-      // Here, assume password is 'member' or something, but for simplicity, allow
       req.session.user = { id: member.id, username: member.phone, role: 'member', member_id: member.id };
       res.redirect('/member/dashboard');
     });
@@ -1125,6 +1177,22 @@ app.get('/admin/reports', (req, res) => {
         });
       });
     });
+  });
+});
+
+app.get('/receptionist/notifications', requireAuth, (req, res) => {
+  db.all(`SELECT n.*, m.name AS member_name FROM notifications n LEFT JOIN members m ON n.member_id = m.id ORDER BY n.created_at DESC LIMIT 50`, [], (err, notes) => {
+    if (err) return res.send('Lỗi lấy thông báo');
+    res.render('receptionist-notifications', { notifications: notes || [] });
+  });
+});
+
+app.get('/member/notifications', requireAuth, (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'member') return res.redirect('/login');
+  const memberId = req.session.user.member_id;
+  db.all(`SELECT * FROM notifications WHERE member_id = ? ORDER BY created_at DESC LIMIT 10`, [memberId], (err, notes) => {
+    if (err) return res.send('Lỗi lấy thông báo');
+    res.render('member-notifications', { notifications: notes || [] });
   });
 });
 

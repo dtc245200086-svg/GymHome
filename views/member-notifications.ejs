@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔔 Thông Báo Hội Viên</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>🔔 THÔNG BÁO TRUY CẬP</h1>
+    <p>Thông báo mới nhất cho tài khoản của bạn</p>
+  </header>
+
+  <div class="container">
+    <% if (notifications.length === 0) { %>
+      <div class="alert" style="margin: 20px 0;">Chưa có thông báo nào</div>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Tình trạng</th>
+            <th>Nội dung</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% notifications.forEach(n => { %>
+            <tr>
+              <td><%= n.created_at %></td>
+              <td style="color: <%= n.status === 'success' ? '#4caf50' : '#f44336' %>"><%= n.status %></td>
+              <td><%= n.message %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="/member/dashboard" class="btn">← Quay lại Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>

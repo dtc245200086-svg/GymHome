@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📣 Thông Báo Quét QR - Lễ Tân</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>📣 THÔNG BÁO QUÉT QR</h1>
+    <p>Danh sách các lần quét, thành công/ thất bại, gửi ra quầy lễ tân</p>
+  </header>
+
+  <div class="container">
+    <table>
+      <thead>
+        <tr>
+          <th>Thời gian</th>
+          <th>Hội viên</th>
+          <th>Tầng</th>
+          <th>Trạng thái</th>
+          <th>Thông điệp</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% notifications.forEach(n => { %>
+          <tr>
+            <td><%= n.created_at %></td>
+            <td><%= n.member_name || 'Không xác định' %></td>
+            <td><%= n.floor || '-' %></td>
+            <td style="color: <%= n.status === 'success' ? '#4caf50' : '#f44336' %>"><%= n.status %></td>
+            <td><%= n.message %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="/receptionist/dashboard" class="btn">← Quay lại Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>
