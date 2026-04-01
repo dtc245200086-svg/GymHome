@@ -123,7 +123,8 @@ function initSchema() {
     id SERIAL PRIMARY KEY,
     username TEXT,
     password TEXT,
-    role TEXT
+    role TEXT,
+    member_id INTEGER
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS qr_codes (
     id SERIAL PRIMARY KEY,
@@ -177,7 +178,7 @@ if (!usePg) {
         db.run(`INSERT INTO users (username, password, role) VALUES ('admin', 'admin', 'admin')`);
         db.run(`INSERT INTO users (username, password, role) VALUES ('letan', 'letan', 'receptionist')`);
         db.run(`INSERT INTO users (username, password, role) VALUES ('pt', 'pt', 'pt')`);
-        db.run(`INSERT INTO users (username, password, role) VALUES ('member', 'member', 'member')`);
+        db.run(`INSERT INTO users (username, password, role, member_id) VALUES ('member', 'member', 'member', 1)`);
       }
     });
   });
@@ -205,7 +206,7 @@ if (!usePg) {
         await pgPool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`, ['admin', 'admin', 'admin']);
         await pgPool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`, ['letan', 'letan', 'receptionist']);
         await pgPool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`, ['pt', 'pt', 'pt']);
-        await pgPool.query(`INSERT INTO users (username, password, role) VALUES ($1, $2, $3)`, ['member', 'member', 'member']);
+        await pgPool.query(`INSERT INTO users (username, password, role, member_id) VALUES ($1, $2, $3, $4)`, ['member', 'member', 'member', 1]);
       }
     } catch (error) {
       console.error('Lỗi khởi tạo dữ liệu PostgreSQL:', error);
@@ -314,11 +315,11 @@ app.post('/register', (req, res) => {
         if (err) return res.send('Lỗi đăng ký hội viên');
 
         const memberId = this.lastID;
-        db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, 'member')`, [username, password], (err) => {
+        db.run(`INSERT INTO users (username, password, role, member_id) VALUES (?, ?, 'member', ?)`, [username, password, memberId], function(err) {
           if (err) return res.send('Lỗi tạo tài khoản đăng nhập');
 
           // Cập nhật session tự động đăng nhập cho thành viên mới
-          req.session.user = { id: memberId, username, role: 'member', member_id: memberId };
+          req.session.user = { id: this.lastID || memberId, username, role: 'member', member_id: memberId };
           res.redirect('/member/dashboard');
         });
       });
@@ -753,7 +754,7 @@ app.post('/receptionist/checkout/:id', requireAuth, (req, res) => {
 // Manage Members (Hội viên)
 app.get('/admin/manage-members', requireAuth, (req, res) => {
   db.all(`SELECT u.*, m.name as member_name FROM users u 
-          LEFT JOIN members m ON m.id = u.id 
+          LEFT JOIN members m ON m.id = u.member_id 
           WHERE u.role = 'member' ORDER BY u.id`, [], (err, users) => {
     if (err) return res.send('Lỗi lấy danh sách hội viên');
     res.render('manage-users', { users: users || [], role: 'member', title: '👥 Quản Lý Hội Viên' });
@@ -877,15 +878,38 @@ app.post('/login', (req, res) => {
   db.get(`SELECT * FROM users WHERE username = ? AND password = ?`, [username, password], (err, user) => {
     if (user) {
       if (user.role === 'member') {
-        db.get(`SELECT * FROM members WHERE phone = ?`, [username], (err, member) => {
-          if (!err && member) {
+        const findMemberAndLogin = (member) => {
+          if (member) {
             req.session.user = { id: user.id, username: user.username, role: 'member', member_id: member.id };
-            return res.redirect('/member/dashboard');
+          } else {
+            req.session.user = { id: user.id, username: user.username, role: 'member' };
           }
-          // fallback nếu không tìm member bằng phone
-          req.session.user = { id: user.id, username: user.username, role: 'member' };
           return res.redirect('/member/dashboard');
-        });
+        };
+
+        const queryMemberFallback = (done) => {
+          db.get(`SELECT * FROM members WHERE phone = ?`, [username], (err1, member1) => {
+            if (!err1 && member1) return done(member1);
+
+            db.get(`SELECT * FROM members WHERE name = ?`, [username], (err2, member2) => {
+              if (!err2 && member2) return done(member2);
+
+              db.get(`SELECT * FROM members WHERE id = ?`, [user.id], (err3, member3) => {
+                return done(member3);
+              });
+            });
+          });
+        };
+
+        if (user.member_id) {
+          db.get(`SELECT * FROM members WHERE id = ?`, [user.member_id], (err2, member) => {
+            if (!err2 && member) return findMemberAndLogin(member);
+            queryMemberFallback(findMemberAndLogin);
+          });
+        } else {
+          queryMemberFallback(findMemberAndLogin);
+        }
+
         return;
       }
       req.session.user = user;
@@ -923,11 +947,26 @@ app.get('/pt/dashboard', requireAuth, (req, res) => {
 app.get('/member/dashboard', requireAuth, (req, res) => {
   if (req.session.user.role !== 'member') return res.redirect('/login');
   
-  const member_id = req.session.user.member_id;
-  db.get(`SELECT * FROM members WHERE id = ?`, [member_id], (err, member) => {
-    if (err || !member) return res.send('Không tìm thấy hội viên');
-    res.render('member-dashboard', { member });
-  });
+  const memberId = req.session.user.member_id;
+  const username = req.session.user.username;
+
+  const renderMember = (member) => {
+    if (member) return res.render('member-dashboard', { member });
+    return res.send('Không tìm thấy hội viên');
+  };
+
+  if (memberId) {
+    db.get(`SELECT * FROM members WHERE id = ?`, [memberId], (err, member) => {
+      if (!err && member) return renderMember(member);
+      db.get(`SELECT * FROM members WHERE phone = ? OR name = ?`, [username, username], (err2, member2) => {
+        renderMember(member2);
+      });
+    });
+  } else {
+    db.get(`SELECT * FROM members WHERE phone = ? OR name = ?`, [username, username], (err, member) => {
+      renderMember(member);
+    });
+  }
 });
 
 // Redirect tiện lợi từ /member-dashboard (với dấu -) sang đúng route
