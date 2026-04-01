@@ -129,11 +129,14 @@
       <p style="color: #ccc; font-size: 1.1em;">Điểm quét thẻ vào phòng tập</p>
       
       <div class="input-area">
+        <video id="video" width="400" height="300" playsinline autoplay muted style="border:2px solid #ff6b35; border-radius:12px; background:#111"></video>
+        <p style="color:#ddd; margin:5px 0;">Camera đang mở - đưa QR vào khung để quét</p>
         <input 
-          type="hidden" 
+          type="text" 
           id="qr_input" 
           placeholder="Camera quét QR tự động..."
-          autofocus
+          readonly
+          style="color:#fff; background:#222; border:1px solid #555; padding:12px; width:100%; margin-top:10px;"
         >
         
         <select id="floor_input" required>
@@ -151,9 +154,68 @@
   </div>
 
   <script>
+    const video = document.getElementById('video');
     const qrInput = document.getElementById('qr_input');
     const floorSelect = document.getElementById('floor_input');
     let isProcessing = false;
+    let scanPaused = false;
+
+    async function startScanner() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showNotification('Trình duyệt không hỗ trợ camera. Vui lòng nhập QR bằng tay.', 'error');
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = stream;
+
+        const barcodeDetector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const processFrame = async () => {
+          if (scanPaused || video.readyState !== video.HAVE_ENOUGH_DATA) {
+            requestAnimationFrame(processFrame);
+            return;
+          }
+
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          try {
+            let code = null;
+            if (barcodeDetector) {
+              const detections = await barcodeDetector.detect(canvas);
+              if (detections.length) code = detections[0].rawValue;
+            } else {
+              // Không hỗ trợ BarcodeDetector, bỏ qua tự động
+            }
+
+            if (code) {
+              qrInput.value = code;
+              triggerQrInput();
+              scanPaused = true;
+              setTimeout(() => { scanPaused = false; qrInput.value = ''; }, 3500);
+            }
+          } catch (err) {
+            console.warn('Lỗi quét QR:', err);
+          }
+
+          requestAnimationFrame(processFrame);
+        };
+
+        requestAnimationFrame(processFrame);
+      } catch (error) {
+        showNotification('Không thể bật camera: ' + error.message, 'error');
+      }
+    }
+
+    function triggerQrInput() {
+      const event = new Event('change');
+      qrInput.dispatchEvent(event);
+    }
 
     // Handle QR scan
     qrInput.addEventListener('change', async (e) => {
@@ -279,9 +341,10 @@
       oscillator.stop(audioContext.currentTime + 0.3);
     }
 
-    // Auto-focus input
+    // Auto-focus input và khởi động camera
     window.addEventListener('load', () => {
       qrInput.focus();
+      startScanner();
     });
   </script>
 </body>

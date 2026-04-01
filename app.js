@@ -112,6 +112,13 @@ db.serialize(() => {
   });
 });
 
+// Clean expired QR codes periodically
+setInterval(() => {
+  db.run(`DELETE FROM qr_codes WHERE expires_at < datetime('now')`, [], (err) => {
+    if (err) console.log('Error cleaning expired QR:', err);
+  });
+}, 60 * 1000); // Every minute
+
 // Validations
 function validatePhone(phone) {
   if (!phone || phone.length !== 10) return false;
@@ -186,16 +193,35 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-  const { name, phone, type, expiry, pt_sessions } = req.body;
-  
-  // Validate phone
+  const { username, password, name, phone, type, expiry, pt_sessions } = req.body;
+
+  if (!username || !password) return res.send('Vui lòng nhập tên tài khoản và mật khẩu');
   if (!validatePhone(phone)) {
     return res.send('Lỗi: Số điện thoại phải 10 chữ số và bắt đầu bằng số mạng hợp lệ (010-020, 090-099)');
   }
-  
-  db.run(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES (?, ?, ?, ?, ?)`, [name, phone, type, expiry, parseInt(pt_sessions) || 0], function(err) {
-    if (err) return res.send('Lỗi đăng ký hội viên');
-    res.redirect('/members');
+
+  // Kiểm tra trùng username / phone
+  db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, existingUser) => {
+    if (err) return res.send('Lỗi hệ thống');
+    if (existingUser) return res.send('Username đã tồn tại');
+
+    db.get(`SELECT * FROM members WHERE phone = ?`, [phone], (err, existingMember) => {
+      if (err) return res.send('Lỗi hệ thống');
+      if (existingMember) return res.send('Số điện thoại đã được đăng ký');
+
+      db.run(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES (?, ?, ?, ?, ?)`, [name, phone, type, expiry, parseInt(pt_sessions) || 0], function(err) {
+        if (err) return res.send('Lỗi đăng ký hội viên');
+
+        const memberId = this.lastID;
+        db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, 'member')`, [username, password], (err) => {
+          if (err) return res.send('Lỗi tạo tài khoản đăng nhập');
+
+          // Cập nhật session tự động đăng nhập cho thành viên mới
+          req.session.user = { id: memberId, username, role: 'member', member_id: memberId };
+          res.redirect('/member/dashboard');
+        });
+      });
+    });
   });
 });
 
@@ -206,23 +232,60 @@ app.get('/members', (req, res) => {
   });
 });
 
-app.get('/qr/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  db.get(`SELECT * FROM members WHERE id = ?`, [id], (err, member) => {
-    if (err || !member) return res.send('Hội viên không tồn tại');
-    const qrData = JSON.stringify({ member_id: id, timestamp: Date.now(), name: member.name, type: member.type });
+function generateCodeForMember(member, res) {
+  const today = new Date().toISOString().split('T')[0];
+  if (new Date(member.expiry) < new Date(today)) {
+    return res.send('Thẻ đã hết hạn - Vui lòng gia hạn');
+  }
+
+  const qrData = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const expiresAt = new Date(Date.now() + 60 * 1000).toISOString();
+
+  db.run(`INSERT INTO qr_codes (member_id, qr_data, expires_at) VALUES (?, ?, ?)`, [member.id, qrData, expiresAt], function(err) {
+    if (err) return res.send('Lỗi tạo QR');
+
     qrcode.toDataURL(qrData, (err, url) => {
       if (err) return res.send('Lỗi tạo QR');
-      res.render('qr', { qr: url, id, member });
+      res.render('qr', { qr: url, id: member.id, member });
     });
+  });
+}
+
+app.get('/qr', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'member') return res.redirect('/login');
+
+  const id = req.session.user.member_id;
+  db.get(`SELECT * FROM members WHERE id = ?`, [id], (err, member) => {
+    if (err || !member) return res.send('Hội viên không tồn tại');
+    generateCodeForMember(member, res);
+  });
+});
+
+// Hỗ trợ URL cũ /qr/:id
+app.get('/qr/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.send('ID không hợp lệ');
+
+  db.get(`SELECT * FROM members WHERE id = ?`, [id], (err, member) => {
+    if (err || !member) return res.send('Hội viên không tồn tại');
+    generateCodeForMember(member, res);
   });
 });
 
 app.post('/access', (req, res) => {
   const { qr_data, floor } = req.body;
-  try {
-    const data = JSON.parse(qr_data);
-    const member_id = data.member_id;
+  
+  // Check if QR exists and is valid
+  db.get(`SELECT * FROM qr_codes WHERE qr_data = ? AND used = 0 AND expires_at > datetime('now')`, [qr_data], (err, qr) => {
+    if (err || !qr) {
+      return res.json({ 
+        success: false, 
+        message: '❌ QR không hợp lệ hoặc đã hết hạn',
+        type: 'invalid'
+      });
+    }
+    
+    const member_id = qr.member_id;
     db.get(`SELECT * FROM members WHERE id = ?`, [member_id], (err, member) => {
       if (err || !member) {
         return res.json({ 
@@ -251,38 +314,51 @@ app.post('/access', (req, res) => {
         });
       }
       
-      db.run(`INSERT INTO access_logs (member_id, floor) VALUES (?, ?)`, [member_id, floor], (err) => {
+      // Mark QR as used
+      db.run(`UPDATE qr_codes SET used = 1 WHERE id = ?`, [qr.id], (err) => {
         if (err) {
           return res.json({ 
             success: false, 
-            message: '❌ Lỗi ghi log truy cập',
+            message: '❌ Lỗi cập nhật QR',
             type: 'error'
           });
         }
         
-        res.json({ 
-          success: true, 
-          message: `✅ Chào mừng ${member.name}! Truy cập tầng ${floor}`,
-          type: 'success',
-          member: {
-            name: member.name,
-            phone: member.phone,
-            type: member.type,
-            expiry: member.expiry,
-            pt_sessions: member.pt_sessions
-          },
-          floor: floor,
-          timestamp: new Date().toLocaleTimeString('vi-VN')
+        // Log access
+        db.run(`INSERT INTO access_logs (member_id, floor) VALUES (?, ?)`, [member_id, floor], (err) => {
+          if (err) {
+            return res.json({ 
+              success: false, 
+              message: '❌ Lỗi ghi log truy cập',
+              type: 'error'
+            });
+          }
+          
+          // Update floor capacity
+          db.run(`UPDATE floor_capacity SET current_count = current_count + 1 WHERE floor = ?`, [floor], (err) => {
+            if (err) {
+              console.log('Error updating floor capacity:', err);
+            }
+            
+            res.json({ 
+              success: true, 
+              message: `✅ Chào mừng ${member.name}! Truy cập tầng ${floor}`,
+              type: 'success',
+              member: {
+                name: member.name,
+                phone: member.phone,
+                type: member.type,
+                expiry: member.expiry,
+                pt_sessions: member.pt_sessions
+              },
+              floor: floor,
+              timestamp: new Date().toLocaleTimeString('vi-VN')
+            });
+          });
         });
       });
     });
-  } catch (e) {
-    res.json({ 
-      success: false, 
-      message: '❌ QR không hợp lệ hoặc hết hạn',
-      type: 'invalid'
-    });
-  }
+  });
 });
 
 app.get('/pt', (req, res) => {
@@ -548,7 +624,7 @@ app.get('/receptionist/attendance', requireAuth, (req, res) => {
           LEFT JOIN members m ON a.member_id = m.id 
           WHERE a.date = ? ORDER BY a.check_in_time DESC`, [today], (err, rows) => {
     if (err) return res.send('Lỗi lấy lịch tham dự');
-    res.render('attendance', { attendance: rows || [], today });
+    res.render('attendance', { records: rows || [], today });
   });
 });
 
@@ -695,13 +771,39 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
+  
+  // First check users table
   db.get(`SELECT * FROM users WHERE username = ? AND password = ?`, [username, password], (err, user) => {
-    if (err || !user) return res.send('Đăng nhập không hợp lệ');
-    req.session.user = user;
-    if (user.role === 'admin') res.redirect('/admin/dashboard');
-    else if (user.role === 'receptionist') res.redirect('/receptionist/dashboard');
-    else if (user.role === 'pt') res.redirect('/pt/dashboard');
-    else res.redirect('/member/dashboard');
+    if (user) {
+      if (user.role === 'member') {
+        db.get(`SELECT * FROM members WHERE phone = ?`, [username], (err, member) => {
+          if (!err && member) {
+            req.session.user = { id: user.id, username: user.username, role: 'member', member_id: member.id };
+            return res.redirect('/member/dashboard');
+          }
+          // fallback nếu không tìm member bằng phone
+          req.session.user = { id: user.id, username: user.username, role: 'member' };
+          return res.redirect('/member/dashboard');
+        });
+        return;
+      }
+      req.session.user = user;
+      if (user.role === 'admin') res.redirect('/admin/dashboard');
+      else if (user.role === 'receptionist') res.redirect('/receptionist/dashboard');
+      else if (user.role === 'pt') res.redirect('/pt/dashboard');
+      else res.redirect('/member/dashboard');
+      return;
+    }
+    
+    // If not found in users, check if username is phone number for member login
+    db.get(`SELECT * FROM members WHERE phone = ?`, [username], (err, member) => {
+      if (err || !member) return res.send('Đăng nhập không hợp lệ');
+      
+      // For demo, accept any password for members, or check a default
+      // Here, assume password is 'member' or something, but for simplicity, allow
+      req.session.user = { id: member.id, username: member.phone, role: 'member', member_id: member.id };
+      res.redirect('/member/dashboard');
+    });
   });
 });
 
@@ -718,9 +820,11 @@ app.get('/pt/dashboard', requireAuth, (req, res) => {
 });
 
 app.get('/member/dashboard', requireAuth, (req, res) => {
-  // Giả sử member đầu tiên, có thể cải thiện sau
-  db.get(`SELECT * FROM members LIMIT 1`, [], (err, member) => {
-    if (err || !member) return res.send('Không có hội viên');
+  if (req.session.user.role !== 'member') return res.redirect('/login');
+  
+  const member_id = req.session.user.member_id;
+  db.get(`SELECT * FROM members WHERE id = ?`, [member_id], (err, member) => {
+    if (err || !member) return res.send('Không tìm thấy hội viên');
     res.render('member-dashboard', { member });
   });
 });
@@ -766,6 +870,8 @@ app.get('/logout', (req, res) => {
   });
 });
 
-app.listen(3000, () => {
-  console.log('GymHome Demo running on port 3000');
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+  console.log(`GymHome Demo running on port ${port}`);
 });
