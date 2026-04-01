@@ -18,6 +18,32 @@ app.use(session({
   cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
 }));
 
+// Set user context for views
+app.use((req, res, next) => {
+  res.locals.user = req.session.user;
+
+  if (req.session.user) {
+    switch (req.session.user.role) {
+      case 'admin':
+        res.locals.dashboardPath = '/admin/dashboard';
+        break;
+      case 'receptionist':
+        res.locals.dashboardPath = '/receptionist/dashboard';
+        break;
+      case 'pt':
+        res.locals.dashboardPath = '/pt/dashboard';
+        break;
+      default:
+        res.locals.dashboardPath = '/member/dashboard';
+        break;
+    }
+  } else {
+    res.locals.dashboardPath = '/';
+  }
+
+  next();
+});
+
 // Database
 const usePg = !!process.env.DATABASE_URL;
 let sqliteDb;
@@ -124,7 +150,8 @@ function initSchema() {
     username TEXT,
     password TEXT,
     role TEXT,
-    member_id INTEGER
+    member_id INTEGER,
+    phone TEXT
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS qr_codes (
     id SERIAL PRIMARY KEY,
@@ -152,6 +179,38 @@ function initSchema() {
 }
 
 initSchema();
+
+// Migration: ensure member_id and phone exists on users table (for old DB versions)
+if (!usePg) {
+  db.all(`PRAGMA table_info(users)`, [], (err, columns) => {
+    if (!err && columns && !columns.some(col => col.name === 'member_id')) {
+      db.run(`ALTER TABLE users ADD COLUMN member_id INTEGER`, [], (alterErr) => {
+        if (alterErr) {
+          console.error('Lỗi khi thêm cột member_id vào users:', alterErr);
+        } else {
+          console.log('Đã thêm cột member_id vào users (nâng cấp schema)');
+        }
+      });
+    }
+    if (!err && columns && !columns.some(col => col.name === 'phone')) {
+      db.run(`ALTER TABLE users ADD COLUMN phone TEXT`, [], (alterErr) => {
+        if (alterErr) {
+          console.error('Lỗi khi thêm cột phone vào users:', alterErr);
+        } else {
+          console.log('Đã thêm cột phone vào users (nâng cấp schema)');
+          // Update existing users with phone from members
+          db.run(`UPDATE users SET phone = (SELECT phone FROM members WHERE members.id = users.member_id) WHERE member_id IS NOT NULL AND phone IS NULL`, [], (updateErr) => {
+            if (updateErr) {
+              console.error('Lỗi khi update phone cho users existing:', updateErr);
+            } else {
+              console.log('Đã update phone cho users existing');
+            }
+          });
+        }
+      });
+    }
+  });
+}
 
 if (!usePg) {
   db.serialize(() => {
@@ -216,7 +275,11 @@ if (!usePg) {
 
 // Clean expired QR codes periodically
 setInterval(() => {
-  db.run(`DELETE FROM qr_codes WHERE expires_at < ${usePg ? 'NOW()' : "datetime('now')"}`, [], (err) => {
+  const deleteQrSql = usePg
+    ? `DELETE FROM qr_codes WHERE expires_at < NOW()`
+    : `DELETE FROM qr_codes WHERE expires_at < datetime('now')`;
+
+  db.run(deleteQrSql, [], (err) => {
     if (err) console.log('Error cleaning expired QR:', err);
   });
 }, 60 * 1000); // Every minute
@@ -268,15 +331,32 @@ function requireAuth(req, res, next) {
   }
 }
 
-function requireRole(role) {
+function requireRole(roleOrRoles) {
+  const roles = Array.isArray(roleOrRoles) ? roleOrRoles : [roleOrRoles];
   return (req, res, next) => {
-    if (req.session.user && req.session.user.role === role) {
-      return next();
-    } else {
-      res.redirect('/login');
+    if (!req.session.user) {
+      return res.redirect('/login');
     }
+
+    if (roles.includes(req.session.user.role)) {
+      return next();
+    }
+
+    const redirectMap = {
+      admin: '/admin/dashboard',
+      receptionist: '/receptionist/dashboard',
+      pt: '/pt/dashboard',
+      member: '/member/dashboard'
+    };
+
+    return res.redirect(redirectMap[req.session.user.role] || '/');
   };
 }
+
+// Enforce role-based path-level access
+app.use('/admin', requireRole('admin'));
+app.use('/receptionist', requireRole('receptionist'));
+app.use('/pt', requireRole(['pt', 'admin']));
 
 // Routes
 app.get('/', (req, res) => {
@@ -315,7 +395,7 @@ app.post('/register', (req, res) => {
         if (err) return res.send('Lỗi đăng ký hội viên');
 
         const memberId = this.lastID;
-        db.run(`INSERT INTO users (username, password, role, member_id) VALUES (?, ?, 'member', ?)`, [username, password, memberId], function(err) {
+        db.run(`INSERT INTO users (username, password, role, member_id, phone) VALUES (?, ?, 'member', ?, ?)`, [username, password, memberId, phone], function(err) {
           if (err) return res.send('Lỗi tạo tài khoản đăng nhập');
 
           // Cập nhật session tự động đăng nhập cho thành viên mới
@@ -378,7 +458,8 @@ app.post('/access', (req, res) => {
   const { qr_data, floor } = req.body;
   
   // Check if QR exists and is valid
-  db.get(`SELECT * FROM qr_codes WHERE qr_data = ? AND used = 0 AND expires_at > datetime('now')`, [qr_data], (err, qr) => {
+  const expiryCondition = usePg ? 'expires_at > NOW()' : "expires_at > datetime('now')";
+  db.get(`SELECT * FROM qr_codes WHERE qr_data = ? AND used = 0 AND ${expiryCondition}`, [qr_data], (err, qr) => {
     if (err || !qr) {
       return res.json({ 
         success: false, 
@@ -407,10 +488,11 @@ app.post('/access', (req, res) => {
         });
       }
       
-      if (member.type === 'Regular' && floor > 3) {
+      const floorNumber = parseInt(floor, 10);
+      if (member.type === 'Regular' && floorNumber > 3) {
         return res.json({ 
           success: false, 
-          message: `❌ Thẻ ${member.type} chỉ được vào tầng 1-3, không vào tầng ${floor}`,
+          message: `❌ Thẻ ${member.type} chỉ được vào tầng 1-3, không vào tầng ${floorNumber}`,
           type: 'restricted',
           member: member
         });
@@ -427,7 +509,7 @@ app.post('/access', (req, res) => {
         }
         
         // Log access
-        db.run(`INSERT INTO access_logs (member_id, floor) VALUES (?, ?)`, [member_id, floor], (err) => {
+        db.run(`INSERT INTO access_logs (member_id, floor) VALUES (?, ?)`, [member_id, floorNumber], (err) => {
           if (err) {
             return res.json({ 
               success: false, 
@@ -437,7 +519,7 @@ app.post('/access', (req, res) => {
           }
           
           // Update floor capacity
-          db.run(`UPDATE floor_capacity SET current_count = current_count + 1 WHERE floor = ?`, [floor], (err) => {
+          db.run(`UPDATE floor_capacity SET current_count = current_count + 1 WHERE floor = ?`, [floorNumber], (err) => {
             if (err) {
               console.log('Error updating floor capacity:', err);
             }
@@ -480,14 +562,15 @@ app.post('/pt/confirm/:id', (req, res) => {
   });
 });
 
-app.get('/admin/devices', (req, res) => {
+// Legacy devices route (đã được sao chép sang devices-enhanced)
+app.get('/admin/devices/basic', requireAuth, (req, res) => {
   db.all(`SELECT * FROM devices`, [], (err, rows) => {
     if (err) return res.send('Lỗi lấy thiết bị');
     res.render('devices', { devices: rows });
   });
 });
 
-app.post('/admin/devices/:id', (req, res) => {
+app.post('/admin/devices/:id', requireAuth, (req, res) => {
   const id = parseInt(req.params.id);
   const { ip } = req.body;
   
@@ -524,11 +607,14 @@ app.get('/admin/alerts', requireAuth, (req, res) => {
 
 // TÍNH NĂNG MỚI: FLOOR CAPACITY MANAGEMENT
 app.get('/admin/floor-capacity', requireAuth, (req, res) => {
-  db.all(`SELECT fc.*, 
+  const oneHourAgo = usePg ? "NOW() - INTERVAL '1 hour'" : "datetime('now', '-1 hour')";
+  const query = `SELECT fc.*, 
           (SELECT COUNT(*) FROM access_logs 
            WHERE floor = fc.floor AND 
-           timestamp > datetime('now', '-1 hour')) as current_count
-          FROM floor_capacity fc`, [], (err, floors) => {
+           timestamp > ${oneHourAgo}) as current_count
+          FROM floor_capacity fc`;
+
+  db.all(query, [], (err, floors) => {
     if (err) return res.send('Lỗi lấy thông tin tầng');
     const floorsData = floors.map(f => ({
       ...f,
@@ -753,21 +839,55 @@ app.post('/receptionist/checkout/:id', requireAuth, (req, res) => {
 // ========== ADMIN USER MANAGEMENT ==========
 // Manage Members (Hội viên)
 app.get('/admin/manage-members', requireAuth, (req, res) => {
-  db.all(`SELECT u.*, m.name as member_name FROM users u 
+  const query = `SELECT u.*, m.name as member_name FROM users u 
           LEFT JOIN members m ON m.id = u.member_id 
-          WHERE u.role = 'member' ORDER BY u.id`, [], (err, users) => {
-    if (err) return res.send('Lỗi lấy danh sách hội viên');
-    res.render('manage-users', { users: users || [], role: 'member', title: '👥 Quản Lý Hội Viên' });
+          WHERE u.role = 'member' ORDER BY u.id`;
+
+  db.all(query, [], (err, users) => {
+    if (err) {
+      console.error('manage-members query error:', err);
+      if (err.message && err.message.includes('no such column: u.member_id')) {
+        // Fallback for legacy DB where member_id column doesn't exist yet
+        db.all(`SELECT * FROM users WHERE role = 'member' ORDER BY id`, [], (err2, users2) => {
+          if (err2) {
+            console.error('manage-members fallback query error:', err2);
+            return res.send('Lỗi lấy danh sách hội viên');
+          }
+          return res.render('manage-users', { users: users2 || [], role: 'member', title: '👥 Quản Lý Hội Viên' });
+        });
+      } else {
+        return res.send('Lỗi lấy danh sách hội viên');
+      }
+    } else {
+      res.render('manage-users', { users: users || [], role: 'member', title: '👥 Quản Lý Hội Viên' });
+    }
   });
 });
 
 app.post('/admin/create-member', requireAuth, (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, name, phone, type, expiry, pt_sessions } = req.body;
   if (!username || !password) return res.send('Bắt buộc nhập username và password');
-  db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`,
-         [username, password, 'member'], (err) => {
-    if (err) return res.send('Lỗi tạo hội viên - có thể username đã tồn tại');
-    res.redirect('/admin/manage-members');
+
+  const memberName = name && name.trim() ? name.trim() : username;
+  const memberPhone = (phone && phone.trim()) || null;
+  const memberType = type && type.trim() ? type.trim() : 'Regular';
+  const memberExpiry = expiry && expiry.trim() ? expiry.trim() : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const memberPts = Number.isInteger(parseInt(pt_sessions)) ? parseInt(pt_sessions) : 10;
+
+  db.run(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES (?, ?, ?, ?, ?)`,
+         [memberName, memberPhone, memberType, memberExpiry, memberPts], function (err) {
+    if (err) return res.send('Lỗi tạo hội viên trong members');
+
+    const memberId = this.lastID;
+    db.run(`INSERT INTO users (username, password, role, member_id, phone) VALUES (?, ?, ?, ?, ?)`,
+           [username, password, 'member', memberId, memberPhone], (err2) => {
+      if (err2) {
+        // rollback member if user insert fails
+        db.run(`DELETE FROM members WHERE id = ?`, [memberId]);
+        return res.send('Lỗi tạo tài khoản hội viên - có thể username đã tồn tại');
+      }
+      res.redirect('/admin/manage-members');
+    });
   });
 });
 
@@ -888,13 +1008,18 @@ app.post('/login', (req, res) => {
         };
 
         const queryMemberFallback = (done) => {
+          if (user.phone) {
+            db.get(`SELECT * FROM members WHERE phone = ?`, [user.phone], (err1, member1) => {
+              if (!err1 && member1) return done(member1);
+            });
+          }
           db.get(`SELECT * FROM members WHERE phone = ?`, [username], (err1, member1) => {
             if (!err1 && member1) return done(member1);
 
             db.get(`SELECT * FROM members WHERE name = ?`, [username], (err2, member2) => {
               if (!err2 && member2) return done(member2);
 
-              db.get(`SELECT * FROM members WHERE id = ?`, [user.id], (err3, member3) => {
+              db.get(`SELECT * FROM members WHERE id = ?`, [user.member_id || user.id], (err3, member3) => {
                 return done(member3);
               });
             });

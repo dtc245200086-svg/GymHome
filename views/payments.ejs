@@ -19,7 +19,7 @@
     </div>
 
     <h2>📝 Thêm Thanh Toán Mới</h2>
-    <form method="post" action="/admin/payment/add">
+    <form method="post" action="<%= user && user.role === 'receptionist' ? '/receptionist/payment/add' : '/admin/payment/add' %>">
       <label for="member_id">🎫 Chọn Hội Viên:</label>
       <select id="member_id" name="member_id" required>
         <option value="">-- Chọn hội viên --</option>
@@ -85,7 +85,7 @@
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
-      <a href="/admin/dashboard" class="btn">← Quay Lại Dashboard</a>
+      <a href="<%= dashboardPath %>" class="btn">← Quay Lại Dashboard</a>
     </div>
   </div>
 </body>
