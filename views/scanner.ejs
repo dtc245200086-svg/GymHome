@@ -148,6 +148,10 @@
           <option value="5">Tầng 5 - Admin</option>
         </select>
 
+        <div id="member_info" class="member-details" style="display: none;">
+          <p><strong>Thông tin hội viên sẽ hiện sau khi quét QR.</strong></p>
+        </div>
+
         <p class="instruction-text">📱 Đưa điện thoại gần camera để quét</p>
       </div>
     </div>
@@ -247,12 +251,14 @@
         if (result.success) {
           showNotification(result.message, notificationType);
           playSuccessSound();
-          showMemberDetails(result.member, result.floor, result.timestamp);
+          showMemberDetails(result.member, result.floor, result.timestamp, '✅ Quét thành công');
         } else {
           showNotification(result.message, notificationType);
           playErrorSound();
           if (result.member) {
-            showMemberDetails(result.member, floor);
+            showMemberDetails(result.member, floor, new Date().toLocaleTimeString('vi-VN'), result.message);
+          } else {
+            clearMemberDetails();
           }
         }
 
@@ -285,26 +291,34 @@
       }, 4000);
     }
 
-    function showMemberDetails(member, floor, timestamp) {
-      const scanner = document.querySelector('.scanner-box');
-      const existing = document.querySelector('.member-details');
-      if (existing) existing.remove();
+    function clearMemberDetails() {
+      const memberInfo = document.getElementById('member_info');
+      if (memberInfo) {
+        memberInfo.style.display = 'none';
+        memberInfo.innerHTML = `<p><strong>Thông tin hội viên sẽ hiện sau khi quét QR.</strong></p>`;
+      }
+    }
 
-      const details = document.createElement('div');
-      details.className = 'member-details';
-      details.innerHTML = `
-        <strong>👤 ${member.name}</strong><br>
-        📞 ${member.phone}<br>
-        🎯 Loại: ${member.type}<br>
-        📅 Hạn: ${member.expiry}<br>
-        🏋️ PT còn: ${member.pt_sessions} buổi<br>
-        🔓 Vào: <span style="color: #ffd700;">${timestamp || new Date().toLocaleTimeString('vi-VN')}</span>
+    function showMemberDetails(member, floor, timestamp, statusMessage) {
+      const memberInfo = document.getElementById('member_info');
+      if (!memberInfo) return;
+
+      const statusText = statusMessage ? `<p style="margin: 8px 0; font-weight: bold;">${statusMessage}</p>` : '';
+      memberInfo.innerHTML = `
+        ${statusText}
+        <p><strong>👤 ${member.name}</strong></p>
+        <p>📞 ${member.phone}</p>
+        <p>🎯 Loại: ${member.type}</p>
+        <p>📅 Hạn: ${member.expiry}</p>
+        <p>🏋️ PT còn: ${member.pt_sessions} buổi</p>
+        <p>🔓 Tầng: ${floor || '---'}</p>
+        <p>⏱️ Thời gian: ${timestamp || new Date().toLocaleTimeString('vi-VN')}</p>
       `;
-      scanner.appendChild(details);
+      memberInfo.style.display = 'block';
 
       setTimeout(() => {
-        if (existing) existing.remove();
-      }, 5000);
+        clearMemberDetails();
+      }, 10000);
     }
 
     function playSuccessSound() {

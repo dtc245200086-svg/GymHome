@@ -8,3 +8,9 @@ services:
     buildCommand: npm ci
     startCommand: npm start
     plan: free
+
+  - type: postgres
+    name: gymhome-db
+    databaseName: gymhome
+    region: oregon
+    plan: starter

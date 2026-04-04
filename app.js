@@ -64,8 +64,10 @@ function replaceSqliteFunctions(sql) {
   if (!usePg) return sql;
   return sql
     .replace(/datetime\('now'\)/g, 'NOW()')
+    .replace(/datetime\('now', '\-1 hour'\)/g, "NOW() - INTERVAL '1 hour'")
     .replace(/date\('now'\)/g, 'CURRENT_DATE')
-    .replace(/date\('now', '\+30 days'\)/g, "CURRENT_DATE + INTERVAL '30 days'");
+    .replace(/date\('now', '\+30 days'\)/g, "CURRENT_DATE + INTERVAL '30 days'")
+    .replace(/date\('now', '\-30 days'\)/g, "CURRENT_DATE - INTERVAL '30 days'");
 }
 
 function toPgPlaceholders(sql, params) {
@@ -81,11 +83,16 @@ const db = {
       const normalized = replaceSqliteFunctions(sql);
       const { sql: queryText, params: queryParams } = toPgPlaceholders(normalized, params);
       return pgPool.query(queryText, queryParams)
-        .then(res => callback && callback(null, res))
-        .catch(err => callback && callback(err));
+        .then(res => {
+          const resultObj = { lastID: res.rows[0]?.id, changes: res.rowCount, rows: res.rows };
+          if (callback) callback.call(resultObj, null, resultObj);
+        })
+        .catch(err => {
+          if (callback) callback.call(null, err);
+        });
     }
     return sqliteDb.run(sql, params, function (err) {
-      if (callback) callback(err, this);
+      if (callback) callback.call(this, err, this);
     });
   },
   get(sql, params = [], callback) {
@@ -135,8 +142,10 @@ if (usePg) {
 
 // Init DB
 function initSchema() {
+  const idType = usePg ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+
   db.run(`CREATE TABLE IF NOT EXISTS members (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     name TEXT,
     phone TEXT,
     type TEXT,
@@ -145,18 +154,18 @@ function initSchema() {
     profile_picture TEXT
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS access_logs (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     member_id INTEGER,
     floor INTEGER,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS devices (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     floor INTEGER,
     ip TEXT
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS pts (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     user_id INTEGER,
     name TEXT,
     specialty TEXT,
@@ -166,7 +175,7 @@ function initSchema() {
     FOREIGN KEY (user_id) REFERENCES users(id)
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS pt_sessions (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     member_id INTEGER,
     pt_id INTEGER,
     date DATE,
@@ -181,7 +190,7 @@ function initSchema() {
     description TEXT
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     username TEXT,
     password TEXT,
     role TEXT,
@@ -189,7 +198,7 @@ function initSchema() {
     phone TEXT
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS qr_codes (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     member_id INTEGER,
     qr_data TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -197,7 +206,7 @@ function initSchema() {
     used BOOLEAN DEFAULT FALSE
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS payments (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     member_id INTEGER,
     amount REAL,
     type TEXT,
@@ -205,7 +214,7 @@ function initSchema() {
     status TEXT DEFAULT 'completed'
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS notifications (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     member_id INTEGER,
     receiver_user_id INTEGER,
     floor INTEGER,
@@ -215,7 +224,7 @@ function initSchema() {
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS attendance (
-    id SERIAL PRIMARY KEY,
+    id ${idType},
     member_id INTEGER,
     date DATE,
     check_in_time TIME,
@@ -489,7 +498,8 @@ app.post('/register', (req, res) => {
       if (err) return res.send('Lỗi hệ thống');
       if (existingMember) return res.send('Số điện thoại đã được đăng ký');
 
-      db.run(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES (?, ?, ?, ?, ?)`, [name, phone, type, expiry, parseInt(pt_sessions) || 0], function(err) {
+      const insertMemberSql = usePg ? `INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES (?, ?, ?, ?, ?) RETURNING id` : `INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES (?, ?, ?, ?, ?)`;
+  db.run(insertMemberSql, [name, phone, type, expiry, parseInt(pt_sessions) || 0], function(err) {
         if (err) return res.send('Lỗi đăng ký hội viên');
 
         const memberId = this.lastID;
@@ -512,14 +522,40 @@ app.get('/members', (req, res) => {
   });
 });
 
+function createQrPayload(member, expiresAt, token) {
+  return JSON.stringify({
+    member_id: member.id,
+    name: member.name,
+    phone: member.phone,
+    type: member.type,
+    expiry: member.expiry,
+    token,
+    expires_at: expiresAt
+  });
+}
+
+function parseQrPayload(rawQr) {
+  if (!rawQr || typeof rawQr !== 'string') return null;
+  try {
+    const parsed = JSON.parse(rawQr);
+    if (parsed && parsed.member_id && parsed.token) {
+      return parsed;
+    }
+  } catch (_err) {
+    // Not JSON payload, ignore
+  }
+  return null;
+}
+
 function generateCodeForMember(member, res) {
   const today = new Date().toISOString().split('T')[0];
   if (new Date(member.expiry) < new Date(today)) {
     return res.send('Thẻ đã hết hạn - Vui lòng gia hạn');
   }
 
-  const qrData = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   const expiresAt = new Date(Date.now() + 60 * 1000).toISOString();
+  const qrData = createQrPayload(member, expiresAt, token);
 
   db.run(`INSERT INTO qr_codes (member_id, qr_data, expires_at) VALUES (?, ?, ?)`, [member.id, qrData, expiresAt], function(err) {
     if (err) return res.send('Lỗi tạo QR');
@@ -555,17 +591,21 @@ app.get('/qr/:id', (req, res) => {
 app.post('/access', (req, res) => {
   const { qr_data, floor } = req.body;
   const floorNumber = parseInt(floor, 10);
+  const qrString = (qr_data || '').trim();
 
-  if (!qr_data || !floorNumber) {
+  if (!qrString || !floorNumber) {
     const message = '❌ Vui lòng quét QR và chọn tầng';
     return res.json({ success: false, message, type: 'invalid' });
   }
 
   const expiryCondition = usePg ? 'expires_at > NOW()' : "expires_at > datetime('now')";
-  db.get(`SELECT * FROM qr_codes WHERE qr_data = ? AND used = 0 AND ${expiryCondition}`, [qr_data], (err, qr) => {
+  const payload = parseQrPayload(qrString);
+  const qrQuery = `SELECT * FROM qr_codes WHERE qr_data = ? AND used = 0 AND ${expiryCondition}`;
+
+  db.get(qrQuery, [qrString], (err, qr) => {
     if (err || !qr) {
       const message = '❌ QR không hợp lệ hoặc đã hết hạn. Vui lòng tạo lại mã QR hoặc xuống quầy lễ tân để được hỗ trợ.';
-      createNotification({ member_id: null, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
+      createNotification({ member_id: payload?.member_id || null, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
       return res.json({ success: false, message, type: 'error' });
     }
 
@@ -1032,7 +1072,8 @@ app.post('/admin/create-member', requireAuth, (req, res) => {
   const memberExpiry = expiry && expiry.trim() ? expiry.trim() : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const memberPts = Number.isInteger(parseInt(pt_sessions)) ? parseInt(pt_sessions) : 10;
 
-  db.run(`INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES (?, ?, ?, ?, ?)`,
+  const insertMemberSql = usePg ? `INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES (?, ?, ?, ?, ?) RETURNING id` : `INSERT INTO members (name, phone, type, expiry, pt_sessions) VALUES (?, ?, ?, ?, ?)`;
+  db.run(insertMemberSql,
          [memberName, memberPhone, memberType, memberExpiry, memberPts], function (err) {
     if (err) return res.send('Lỗi tạo hội viên trong members');
 
@@ -1079,7 +1120,8 @@ app.post('/admin/create-pt', requireAuth, (req, res) => {
   const { username, password, name, specialty, experience_years, bio, profile_picture } = req.body;
   if (!username || !password) return res.send('Bắt buộc nhập username và password');
   
-  db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`,
+  const insertPtUserSql = usePg ? `INSERT INTO users (username, password, role) VALUES (?, ?, ?) RETURNING id` : `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`;
+  db.run(insertPtUserSql,
          [username, password, 'pt'], function(err) {
     if (err) return res.send('Lỗi tạo PT - có thể username đã tồn tại');
     
