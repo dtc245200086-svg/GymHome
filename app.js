@@ -201,6 +201,7 @@ function initSchema() {
     id ${idType},
     member_id INTEGER,
     qr_data TEXT,
+    token TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP,
     used BOOLEAN DEFAULT FALSE
@@ -275,6 +276,18 @@ if (!usePg) {
           console.error('Lỗi khi thêm cột receiver_user_id vào notifications:', alterErr);
         } else {
           console.log('Đã thêm cột receiver_user_id vào notifications (nâng cấp schema)');
+        }
+      });
+    }
+  });
+
+  db.all(`PRAGMA table_info(qr_codes)`, [], (err, columns) => {
+    if (!err && columns && !columns.some(col => col.name === 'token')) {
+      db.run(`ALTER TABLE qr_codes ADD COLUMN token TEXT`, [], (alterErr) => {
+        if (alterErr) {
+          console.error('Lỗi khi thêm cột token vào qr_codes:', alterErr);
+        } else {
+          console.log('Đã thêm cột token vào qr_codes (nâng cấp schema)');
         }
       });
     }
@@ -557,7 +570,7 @@ function generateCodeForMember(member, res) {
   const expiresAt = new Date(Date.now() + 60 * 1000).toISOString();
   const qrData = createQrPayload(member, expiresAt, token);
 
-  db.run(`INSERT INTO qr_codes (member_id, qr_data, expires_at) VALUES (?, ?, ?)`, [member.id, qrData, expiresAt], function(err) {
+  db.run(`INSERT INTO qr_codes (member_id, qr_data, token, expires_at) VALUES (?, ?, ?, ?)`, [member.id, qrData, token, expiresAt], function(err) {
     if (err) return res.send('Lỗi tạo QR');
 
     qrcode.toDataURL(qrData, (err, url) => {
@@ -601,14 +614,22 @@ app.post('/access', (req, res) => {
   const expiryCondition = usePg ? 'expires_at > NOW()' : "expires_at > datetime('now')";
   const payload = parseQrPayload(qrString);
   const qrQuery = `SELECT * FROM qr_codes WHERE qr_data = ? AND used = 0 AND ${expiryCondition}`;
+  const tokenQuery = payload && payload.token && payload.member_id
+    ? `SELECT * FROM qr_codes WHERE token = ? AND member_id = ? AND used = 0 AND ${expiryCondition}`
+    : null;
 
-  db.get(qrQuery, [qrString], (err, qr) => {
-    if (err || !qr) {
-      const message = '❌ QR không hợp lệ hoặc đã hết hạn. Vui lòng tạo lại mã QR hoặc xuống quầy lễ tân để được hỗ trợ.';
-      createNotification({ member_id: payload?.member_id || null, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
-      return res.json({ success: false, message, type: 'error' });
+  function findQr(callback) {
+    if (tokenQuery) {
+      return db.get(tokenQuery, [payload.token, payload.member_id], (err, qr) => {
+        if (err) return callback(err);
+        if (qr) return callback(null, qr);
+        db.get(qrQuery, [qrString], callback);
+      });
     }
+    db.get(qrQuery, [qrString], callback);
+  }
 
+  function processQr(qr) {
     const member_id = qr.member_id;
     db.get(`SELECT * FROM members WHERE id = ?`, [member_id], (err, member) => {
       if (err || !member) {
@@ -702,6 +723,16 @@ app.post('/access', (req, res) => {
         });
       });
     });
+  }
+
+  findQr((err, qr) => {
+    if (err || !qr) {
+      const message = '❌ QR không hợp lệ hoặc đã hết hạn. Vui lòng tạo lại mã QR hoặc xuống quầy lễ tân để được hỗ trợ.';
+      createNotification({ member_id: payload?.member_id || null, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
+      return res.json({ success: false, message, type: 'error' });
+    }
+
+    processQr(qr);
   });
 });
 
