@@ -7,6 +7,7 @@ const session = require('express-session');
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 
@@ -442,6 +443,16 @@ function createNotification({ member_id = null, receiver_user_id = null, floor =
     });
 }
 
+function notifyStaff(message, floor = null) {
+  const query = `SELECT id FROM users WHERE role IN ('admin', 'receptionist')`;
+  db.all(query, [], (err, rows) => {
+    if (err) return console.error('Lỗi tìm staff thông báo:', err);
+    rows.forEach(row => {
+      createNotification({ receiver_user_id: row.id, floor, message, status: 'fail', origin: 'scanner' });
+    });
+  });
+}
+
 // Middleware check auth
 function requireAuth(req, res, next) {
   if (req.session.user) {
@@ -727,8 +738,9 @@ app.post('/access', (req, res) => {
 
   findQr((err, qr) => {
     if (err || !qr) {
-      const message = '❌ QR không hợp lệ hoặc đã hết hạn. Vui lòng tạo lại mã QR hoặc xuống quầy lễ tân để được hỗ trợ.';
+      const message = '❌ QR không hợp lệ hoặc không phải mã hệ thống. Vui lòng sử dụng QR do Gym Home tạo.';
       createNotification({ member_id: payload?.member_id || null, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
+      notifyStaff(message, floorNumber);
       return res.json({ success: false, message, type: 'error' });
     }
 
