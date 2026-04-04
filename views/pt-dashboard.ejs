@@ -5,6 +5,155 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🏃 Dashboard PT - Gym Home</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+    .pt-info {
+      background: linear-gradient(135deg, #ff6b35 0%, #d84315 100%);
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+      margin-bottom: 40px;
+      box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);
+    }
+    .pt-info img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 15px;
+      border: 4px solid white;
+    }
+    .sessions-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: #2a2a2a;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+    }
+    .sessions-table th, .sessions-table td {
+      padding: 15px;
+      text-align: left;
+      border-bottom: 1px solid #444;
+    }
+    .sessions-table th {
+      background: #ff6b35;
+      color: white;
+      font-weight: bold;
+    }
+    .sessions-table tr:hover {
+      background: #3a3a3a;
+    }
+    .status-confirmed {
+      color: #4caf50;
+      font-weight: bold;
+    }
+    .status-pending {
+      color: #ff9800;
+      font-weight: bold;
+    }
+    .btn-confirm {
+      background: #4caf50;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-confirm:hover {
+      background: #45a049;
+    }
+    .btn-reject {
+      background: #f44336;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin-left: 8px;
+    }
+    .btn-reject:hover {
+      background: #da190b;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.6);
+    }
+    .modal-content {
+      background-color: #2a2a2a;
+      margin: 10% auto;
+      padding: 30px;
+      border: 1px solid #ff6b35;
+      border-radius: 10px;
+      width: 80%;
+      max-width: 500px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    }
+    .modal-header {
+      color: #ff6b35;
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .modal-close {
+      color: #f1f1f1;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .modal-close:hover {
+      color: #ff6b35;
+    }
+    .modal textarea {
+      width: 100%;
+      height: 120px;
+      padding: 10px;
+      border: 1px solid #555;
+      border-radius: 5px;
+      background: #1a1a1a;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+    .modal-buttons {
+      text-align: right;
+    }
+    .modal-buttons button {
+      padding: 10px 20px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-submit-reject {
+      background: #f44336;
+      color: white;
+    }
+    .btn-submit-reject:hover {
+      background: #da190b;
+    }
+    .btn-cancel {
+      background: #666;
+      color: white;
+    }
+    .btn-cancel:hover {
+      background: #888;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -12,30 +161,153 @@
     <p>Quản Lý Buổi Tập - Xác Nhận & Theo Dõi</p>
   </header>
   <div class="container">
-    <div style="background: linear-gradient(135deg, #ff6b35 0%, #d84315 100%); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 40px; box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);">
-      <h2 style="color: white; margin: 0; font-size: 1.8em;">💪 Chào Mừng PT Coach</h2>
-      <p style="color: rgba(255, 255, 255, 0.9); margin-top: 10px;">Quản Lý & Xác Nhận Buổi Tập Của Các Hội Viên</p>
+    <div class="pt-info">
+      <img src="<%= pt.profile_picture || '/default-pt.jpg' %>" alt="<%= pt.name %>">
+      <h2 style="color: white; margin: 0; font-size: 1.8em;">💪 <%= pt.name %></h2>
+      <p style="color: rgba(255, 255, 255, 0.9); margin-top: 10px;"><%= pt.specialty %> - <%= pt.experience_years %> năm kinh nghiệm</p>
+      <p style="color: rgba(255, 255, 255, 0.9);"><%= pt.bio %></p>
+      <a href="/pt/edit-profile" class="btn" style="margin-top: 15px;">✏️ Chỉnh Sửa Thông Tin</a>
     </div>
-    <div class="dashboard-grid">
-      <div class="card">
-        <h3>🏋️ Quản Lý Buổi Tập</h3>
-        <p>Xem danh sách buổi tập, xác nhận với hội viên</p>
-        <a href="/pt" class="btn">📋 Quản Lý Buổi</a>
-      </div>
+    <div style="text-align: center; margin: 20px 0; padding: 15px; background: #2a2a2a; border-radius: 8px;">
+      <button onclick="location.reload()" class="btn" style="background: #2196F3;">🔄 Làm Mới Dữ Liệu</button>
+      <p style="color: #aaa; font-size: 0.9em; margin-top: 10px;">Trang sẽ tự động làm mới mỗi 30 giây</p>
+    </div>
+    <h2>� Lịch Đặt Chờ Xác Nhận</h2>
+    <% if (pendingBookings.length === 0) { %>
+      <p style="text-align: center; color: #ccc; font-style: italic;">Không có lịch đặt nào chờ xác nhận.</p>
+    <% } else { %>
+      <table class="sessions-table">
+        <thead>
+          <tr>
+            <th>Hội Viên</th>
+            <th>Số Điện Thoại</th>
+            <th>Ngày Dạy</th>
+            <th>Trạng Thái</th>
+            <th>Hành Động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% pendingBookings.forEach(booking => { %>
+            <tr>
+              <td><%= booking.member_name %></td>
+              <td><%= booking.member_phone %></td>
+              <td><%= booking.date %></td>
+              <td class="status-pending">⏳ Chờ Xác Nhận</td>
+              <td>
+                <form action="/pt/confirm/<%= booking.id %>" method="POST" style="display: inline;">
+                  <button type="submit" class="btn-confirm">✅ Xác Nhận</button>
+                </form>
+                <button type="button" class="btn-reject" onclick="openRejectModal(<%= booking.id %>, '<%= booking.member_name %>', '<%= booking.date %>')">❌ Từ Chối</button>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <h2 style="margin-top: 40px;">�📅 Lịch Dạy Sắp Tới</h2>
+    <% if (sessions.length === 0) { %>
+      <p style="text-align: center; color: #ccc; font-style: italic;">Không có buổi học nào sắp tới.</p>
+    <% } else { %>
+      <table class="sessions-table">
+        <thead>
+          <tr>
+            <th>Hội Viên</th>
+            <th>Số Điện Thoại</th>
+            <th>Ngày</th>
+            <th>Trạng Thái</th>
+            <th>Hành Động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% sessions.forEach(session => { %>
+            <tr>
+              <td><%= session.member_name %></td>
+              <td><%= session.member_phone %></td>
+              <td><%= session.date %></td>
+              <td class="<%= session.confirmed ? 'status-confirmed' : 'status-pending' %>">
+                <%= session.confirmed ? '✅ Đã Xác Nhận' : '⏳ Chờ Xác Nhận' %>
+              </td>
+              <td>
+                <% if (!session.confirmed) { %>
+                  <form action="/pt/confirm/<%= session.id %>" method="POST" style="display: inline;">
+                    <button type="submit" class="btn-confirm">Xác Nhận</button>
+                  </form>
+                <% } else { %>
+                  <span style="color: #4caf50;">Đã Xác Nhận</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <div class="dashboard-grid" style="margin-top: 40px;">
       <div class="card">
         <h3>👥 Danh Sách Hội Viên</h3>
-        <p>Xem thông tin chi tiết hội viên của bạn</p>
+        <p>Xem thông tin chi tiết hội viên</p>
         <a href="/members" class="btn">👤 Xem Danh Sách</a>
       </div>
       <div class="card">
         <h3>📊 Thống Kê Buổi PT</h3>
         <p>Xem số buổi PT đã xác nhận</p>
-        <a href="/admin/reports" class="btn">📈 Thống Kê</a>
+        <a href="/pt/reports" class="btn">📈 Thống Kê</a>
+      </div>
+      <div class="card">
+        <h3>🔔 Thông Báo</h3>
+        <p>Xem thông báo từ hội viên</p>
+        <a href="/pt/notifications" class="btn">📬 Xem Thông Báo</a>
       </div>
     </div>
+
     <div style="text-align: center; margin-top: 40px;">
       <a href="/logout" class="logout">🚪 Đăng Xuất</a>
     </div>
   </div>
+
+  <!-- Reject Modal -->
+  <div id="rejectModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeRejectModal()">&times;</span>
+      <div class="modal-header">❌ Từ Chối Lịch Dạy</div>
+      <form id="rejectForm" method="POST">
+        <p style="color: #ccc;">Hội Viên: <span id="memberName" style="color: #ff6b35;"></span></p>
+        <p style="color: #ccc;">Ngày Dạy: <span id="bookingDate" style="color: #ff6b35;"></span></p>
+        <label for="rejection_reason" style="color: #fff;">Lý Do Từ Chối (bắt buộc):</label>
+        <textarea id="rejection_reason" name="rejection_reason" required placeholder="Nhập lý do từ chối (ví dụ: Bận, Bệnh, v.v.)"></textarea>
+        <div class="modal-buttons">
+          <button type="button" class="btn-cancel" onclick="closeRejectModal()">Hủy</button>
+          <button type="submit" class="btn-submit-reject">Xác Nhận Từ Chối</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openRejectModal(bookingId, memberName, bookingDate) {
+      document.getElementById('memberName').textContent = memberName;
+      document.getElementById('bookingDate').textContent = bookingDate;
+      document.getElementById('rejection_reason').value = '';
+      document.getElementById('rejectForm').action = '/pt/reject/' + bookingId;
+      document.getElementById('rejectModal').style.display = 'block';
+    }
+
+    function closeRejectModal() {
+      document.getElementById('rejectModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById('rejectModal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    // Auto-refresh page every 30 seconds for real-time updates
+    setInterval(function() {
+      location.reload();
+    }, 30000);
+  </script>
 </body>
 </html>

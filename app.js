@@ -141,7 +141,8 @@ function initSchema() {
     phone TEXT,
     type TEXT,
     expiry DATE,
-    pt_sessions INTEGER DEFAULT 0
+    pt_sessions INTEGER DEFAULT 0,
+    profile_picture TEXT
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS access_logs (
     id SERIAL PRIMARY KEY,
@@ -154,17 +155,30 @@ function initSchema() {
     floor INTEGER,
     ip TEXT
   )`, []);
+  db.run(`CREATE TABLE IF NOT EXISTS pts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    name TEXT,
+    specialty TEXT,
+    experience_years INTEGER,
+    bio TEXT,
+    profile_picture TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS pt_sessions (
     id SERIAL PRIMARY KEY,
     member_id INTEGER,
     pt_id INTEGER,
     date DATE,
-    confirmed BOOLEAN DEFAULT FALSE
+    confirmed BOOLEAN DEFAULT FALSE,
+    rejection_reason TEXT,
+    FOREIGN KEY (pt_id) REFERENCES pts(id)
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS floor_capacity (
     floor INTEGER PRIMARY KEY,
     max_capacity INTEGER DEFAULT 50,
-    current_count INTEGER DEFAULT 0
+    current_count INTEGER DEFAULT 0,
+    description TEXT
   )`, []);
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -193,6 +207,7 @@ function initSchema() {
   db.run(`CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     member_id INTEGER,
+    receiver_user_id INTEGER,
     floor INTEGER,
     message TEXT,
     status TEXT,
@@ -242,6 +257,21 @@ if (!usePg) {
   });
 }
 
+// Migration: ensure receiver_user_id exists on notifications table
+if (!usePg) {
+  db.all(`PRAGMA table_info(notifications)`, [], (err, columns) => {
+    if (!err && columns && !columns.some(col => col.name === 'receiver_user_id')) {
+      db.run(`ALTER TABLE notifications ADD COLUMN receiver_user_id INTEGER`, [], (alterErr) => {
+        if (alterErr) {
+          console.error('Lỗi khi thêm cột receiver_user_id vào notifications:', alterErr);
+        } else {
+          console.log('Đã thêm cột receiver_user_id vào notifications (nâng cấp schema)');
+        }
+      });
+    }
+  });
+}
+
 if (!usePg) {
   db.serialize(() => {
     db.get(`SELECT COUNT(*) as count FROM members`, [], (err, row) => {
@@ -255,6 +285,26 @@ if (!usePg) {
         for (let i = 1; i <= 5; i++) {
           db.run(`INSERT INTO devices (floor, ip) VALUES (?, ?)`, [i, `192.168.1.${i}`]);
         }
+      }
+    });
+    db.get(`SELECT COUNT(*) as count FROM floor_capacity`, [], (err, row) => {
+      if (row && row.count === 0) {
+        const descriptions = {
+          1: 'Khu gửi đồ, lễ tân và phòng tập trải nghiệm',
+          2: 'Dành cho hội viên thường',
+          3: 'Dành cho hội viên thường',
+          4: 'Dành cho hội viên VIP có massage và view cao cấp',
+          5: 'Khu tập riêng tư, cao cấp dành cho hội viên VIP'
+        };
+        for (let i = 1; i <= 5; i++) {
+          db.run(`INSERT INTO floor_capacity (floor, max_capacity, description) VALUES (?, 50, ?)`, [i, descriptions[i]]);
+        }
+      }
+    });
+    db.get(`SELECT COUNT(*) as count FROM pts`, [], (err, row) => {
+      if (row && row.count === 0) {
+        // Assuming pt user id is 3
+        db.run(`INSERT INTO pts (user_id, name, specialty, experience_years, bio) VALUES (3, 'Nguyen PT', 'Fitness Training', 5, 'Chuyên gia fitness với 5 năm kinh nghiệm')`);
       }
     });
     db.get(`SELECT COUNT(*) as count FROM pt_sessions`, [], (err, row) => {
@@ -328,6 +378,17 @@ function validateIP(ip) {
   return ipv4Pattern.test(ip);
 }
 
+const PAYMENT_QR_TEXT = process.env.PAYMENT_QR_TEXT || 'TÀI KHOẢN: PHAM TIEN HA\nSỐ TÀI KHOẢN: 101882793579\nNGÂN HÀNG: VIETINBANK CN THAI NGUYEN\nNỘI DUNG: THANH TOÁN GÓI TẬP GYM HOME';
+function getPaymentQr(callback) {
+  qrcode.toDataURL(PAYMENT_QR_TEXT, { errorCorrectionLevel: 'H', width: 320 }, (err, url) => {
+    if (err) {
+      console.error('Lỗi tạo QR thanh toán:', err);
+      return callback(null);
+    }
+    callback(url);
+  });
+}
+
 // Check for PT schedule conflicts
 function checkPTConflict(member_id, pt_id, date, callback) {
   db.get(`SELECT COUNT(*) as count FROM pt_sessions 
@@ -352,9 +413,9 @@ function daysRemaining(expiryDate) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-function createNotification({ member_id = null, floor = null, message, status, origin }) {
-  db.run(`INSERT INTO notifications (member_id, floor, message, status, origin) VALUES (?, ?, ?, ?, ?)`,
-    [member_id, floor, message, status, origin], (err) => {
+function createNotification({ member_id = null, receiver_user_id = null, floor = null, message, status, origin }) {
+  db.run(`INSERT INTO notifications (member_id, receiver_user_id, floor, message, status, origin) VALUES (?, ?, ?, ?, ?, ?)`,
+    [member_id, receiver_user_id, floor, message, status, origin], (err) => {
       if (err) console.error('Lỗi lưu notification:', err);
     });
 }
@@ -493,73 +554,110 @@ app.get('/qr/:id', (req, res) => {
 
 app.post('/access', (req, res) => {
   const { qr_data, floor } = req.body;
-  
+  const floorNumber = parseInt(floor, 10);
+
+  if (!qr_data || !floorNumber) {
+    const message = '❌ Vui lòng quét QR và chọn tầng';
+    return res.json({ success: false, message, type: 'invalid' });
+  }
+
   const expiryCondition = usePg ? 'expires_at > NOW()' : "expires_at > datetime('now')";
   db.get(`SELECT * FROM qr_codes WHERE qr_data = ? AND used = 0 AND ${expiryCondition}`, [qr_data], (err, qr) => {
     if (err || !qr) {
-      const message = '❌ QR không hợp lệ hoặc đã hết hạn';
-      createNotification({ member_id: null, floor: floor || null, message, status: 'fail', origin: 'scanner' });
-      return res.json({ success: false, message, type: 'invalid' });
+      const message = '❌ QR không hợp lệ hoặc đã hết hạn. Vui lòng tạo lại mã QR hoặc xuống quầy lễ tân để được hỗ trợ.';
+      createNotification({ member_id: null, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
+      return res.json({ success: false, message, type: 'error' });
     }
 
     const member_id = qr.member_id;
     db.get(`SELECT * FROM members WHERE id = ?`, [member_id], (err, member) => {
       if (err || !member) {
-        const message = '❌ Hội viên không tồn tại';
-        createNotification({ member_id, floor: floor || null, message, status: 'fail', origin: 'scanner' });
+        const message = '❌ Hội viên không tồn tại. Kiểm tra lại mã QR hoặc liên hệ lễ tân để được hỗ trợ.';
+        createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
         return res.json({ success: false, message, type: 'error' });
       }
 
       const today = new Date().toISOString().split('T')[0];
       if (new Date(member.expiry) < new Date(today)) {
-        const message = '❌ Thẻ đã hết hạn - Vui lòng gia hạn';
-        createNotification({ member_id, floor: parseInt(floor, 10), message, status: 'fail', origin: 'scanner' });
+        const message = '❌ Thẻ đã hết hạn. Vui lòng gia hạn hoặc xuống quầy lễ tân để được hỗ trợ.';
+        createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
         return res.json({ success: false, message, type: 'expired', member });
       }
 
-      const floorNumber = parseInt(floor, 10);
-      if (member.type === 'Regular' && floorNumber > 3) {
-        const message = `❌ Thẻ ${member.type} chỉ được vào tầng 1-3, không vào tầng ${floorNumber}`;
+      const isRegularRestricted = member.type === 'Regular' && floorNumber > 3;
+      if (isRegularRestricted) {
+        const message = `❌ Thẻ ${member.type} chỉ được vào tầng 1-3. Vui lòng tạo lại mã QR hoặc xuống quầy lễ tân để được hỗ trợ.`;
         createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
         return res.json({ success: false, message, type: 'restricted', member });
       }
 
-      db.run(`UPDATE qr_codes SET used = 1 WHERE id = ?`, [qr.id], (err) => {
+      db.get(`SELECT * FROM attendance WHERE member_id = ? AND date = ?`, [member_id, today], (err, attendance) => {
         if (err) {
-          const message = '❌ Lỗi cập nhật QR';
+          const message = '❌ Lỗi kiểm tra attendance. Vui lòng thử lại hoặc liên hệ lễ tân.';
           createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
           return res.json({ success: false, message, type: 'error' });
         }
 
-        db.run(`INSERT INTO access_logs (member_id, floor) VALUES (?, ?)`, [member_id, floorNumber], (err) => {
+        const alreadyCheckedIn = attendance && attendance.check_in_time;
+        if (!alreadyCheckedIn && member.pt_sessions <= 0) {
+          const message = '❌ Hội viên đã hết buổi tập. Vui lòng gia hạn hoặc xuống quầy lễ tân để được hỗ trợ.';
+          createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
+          return res.json({ success: false, message, type: 'error', member });
+        }
+
+        db.run(`UPDATE qr_codes SET used = 1 WHERE id = ?`, [qr.id], (err) => {
           if (err) {
-            const message = '❌ Lỗi ghi log truy cập';
+            const message = '❌ Lỗi cập nhật QR';
             createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
             return res.json({ success: false, message, type: 'error' });
           }
 
-          db.run(`UPDATE floor_capacity SET current_count = current_count + 1 WHERE floor = ?`, [floorNumber], (err) => {
+          db.run(`INSERT INTO access_logs (member_id, floor) VALUES (?, ?)`, [member_id, floorNumber], (err) => {
             if (err) {
-              console.log('Error updating floor capacity:', err);
+              const message = '❌ Lỗi ghi log truy cập';
+              createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
+              return res.json({ success: false, message, type: 'error' });
             }
 
-            const message = `✅ Chào mừng ${member.name}! Truy cập tầng ${floorNumber}`;
-            createNotification({ member_id, floor: floorNumber, message, status: 'success', origin: 'scanner' });
+            const processAttendance = () => {
+              const responseMember = { ...member };
+              if (!alreadyCheckedIn) {
+                responseMember.pt_sessions = Math.max(0, member.pt_sessions - 1);
+                db.run(`UPDATE members SET pt_sessions = pt_sessions - 1 WHERE id = ?`, [member_id], (err) => {
+                  if (err) console.error('Lỗi cập nhật số buổi tập:', err);
+                });
+                db.run(`INSERT INTO attendance (member_id, date, check_in_time) VALUES (?, ?, ?)`, [member_id, today, new Date().toLocaleTimeString('vi-VN')], (err) => {
+                  if (err) console.error('Lỗi tạo attendance:', err);
+                });
+              }
 
-            return res.json({
-              success: true,
-              message,
-              type: 'success',
-              member: {
-                name: member.name,
-                phone: member.phone,
-                type: member.type,
-                expiry: member.expiry,
-                pt_sessions: member.pt_sessions
-              },
-              floor: floorNumber,
-              timestamp: new Date().toLocaleTimeString('vi-VN')
-            });
+              db.run(`UPDATE floor_capacity SET current_count = current_count + 1 WHERE floor = ?`, [floorNumber], (err) => {
+                if (err) console.log('Error updating floor capacity:', err);
+
+                const message = alreadyCheckedIn
+                  ? `✅ ${member.name} đã được xác nhận hôm nay. Mở cửa tầng ${floorNumber}`
+                  : `✅ Chào mừng ${member.name}! Mở cửa tầng ${floorNumber}`;
+
+                createNotification({ member_id, floor: floorNumber, message, status: 'success', origin: 'scanner' });
+                return res.json({
+                  success: true,
+                  message,
+                  type: 'success',
+                  member: {
+                    name: member.name,
+                    phone: member.phone,
+                    type: member.type,
+                    expiry: member.expiry,
+                    pt_sessions: responseMember.pt_sessions
+                  },
+                  floor: floorNumber,
+                  timestamp: new Date().toLocaleTimeString('vi-VN'),
+                  alreadyCheckedIn
+                });
+              });
+            };
+
+            processAttendance();
           });
         });
       });
@@ -574,12 +672,27 @@ app.get('/pt', (req, res) => {
   });
 });
 
-app.post('/pt/confirm/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  db.run(`UPDATE pt_sessions SET confirmed = 1 WHERE id = ?`, [id], (err) => {
-    if (err) return res.send('Lỗi xác nhận');
-    db.run(`UPDATE members SET pt_sessions = pt_sessions - 1 WHERE id = (SELECT member_id FROM pt_sessions WHERE id = ?) AND pt_sessions > 0`, [id], (err) => {
-      res.redirect('/pt');
+app.post('/pt/confirm/:id', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  
+  const sessionId = parseInt(req.params.id);
+  const ptUserId = req.session.user.id;
+  
+  // Verify the session belongs to this PT
+  db.get(`SELECT ps.*, p.name as pt_name FROM pt_sessions ps JOIN pts p ON ps.pt_id = p.id WHERE ps.id = ? AND p.user_id = ?`, 
+         [sessionId, ptUserId], (err, session) => {
+    if (err || !session) return res.send('Buổi học không tồn tại hoặc không thuộc PT này');
+    
+    db.run(`UPDATE pt_sessions SET confirmed = 1 WHERE id = ?`, [sessionId], (err) => {
+      if (err) return res.send('Lỗi xác nhận');
+      
+      // Create notification for member
+      const memberMessage = `✅ PT ${session.pt_name} đã xác nhận lịch tập ngày ${session.date}. Chuẩn bị sẵn sàng!`;
+      createNotification({ member_id: session.member_id, message: memberMessage, status: 'success', origin: 'pt_confirmed' });
+      
+      db.run(`UPDATE members SET pt_sessions = pt_sessions - 1 WHERE id = ? AND pt_sessions > 0`, [session.member_id], (err) => {
+        res.redirect('/pt/dashboard');
+      });
     });
   });
 });
@@ -621,7 +734,8 @@ app.get('/admin/alerts', requireAuth, (req, res) => {
     db.all(`SELECT * FROM members WHERE pt_sessions < 2 AND pt_sessions > 0`, [], (err, ptAlerts) => {
       res.render('admin-alerts', { 
         expiryAlerts: expiryAlerts || [], 
-        ptAlerts: ptAlerts || [] 
+        ptAlerts: ptAlerts || [],
+        dashboardPath: res.locals.dashboardPath || '/admin/dashboard'
       });
     });
   });
@@ -698,8 +812,15 @@ app.get('/admin/payments', requireAuth, (req, res) => {
           JOIN members m ON p.member_id = m.id 
           ORDER BY p.date DESC`, [], (err, payments) => {
     if (err) return res.send('Lỗi lấy lịch thanh toán');
-    const totalRevenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
-    res.render('payments', { payments: payments || [], totalRevenue });
+
+    db.all(`SELECT id as member_id, name FROM members ORDER BY name ASC`, [], (err2, members) => {
+      if (err2) return res.send('Lỗi lấy danh sách hội viên');
+
+      const totalRevenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+      getPaymentQr((paymentQr) => {
+        res.render('payments', { payments: payments || [], totalRevenue, members: members || [], paymentQr });
+      });
+    });
   });
 });
 
@@ -708,6 +829,15 @@ app.post('/admin/payment/add', (req, res) => {
   db.run(`INSERT INTO payments (member_id, amount, type) VALUES (?, ?, ?)`,
          [parseInt(member_id), parseFloat(amount), type], (err) => {
     if (err) return res.send('Lỗi thêm thanh toán');
+    
+    // Get member name for notification
+    db.get(`SELECT name FROM members WHERE id = ?`, [parseInt(member_id)], (err, member) => {
+      if (member) {
+        const message = `💰 Thanh toán ${amount}đ cho gói ${type} đã được ghi nhận. Cảm ơn bạn!`;
+        createNotification({ member_id: parseInt(member_id), message, status: 'success', origin: 'payment' });
+      }
+    });
+    
     res.redirect('/admin/payments');
   });
 });
@@ -813,8 +943,14 @@ app.get('/receptionist/payments', requireAuth, (req, res) => {
           LEFT JOIN members m ON p.member_id = m.id 
           ORDER BY p.date DESC`, [], (err, payments) => {
     if (err) return res.send('Lỗi lấy thanh toán');
-    const totalRevenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
-    res.render('payments', { payments: payments || [], totalRevenue });
+
+    db.all(`SELECT id as member_id, name FROM members ORDER BY name ASC`, [], (err2, members) => {
+      if (err2) return res.send('Lỗi lấy danh sách hội viên');
+      const totalRevenue = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+      getPaymentQr((paymentQr) => {
+        res.render('payments', { payments: payments || [], totalRevenue, members: members || [], paymentQr });
+      });
+    });
   });
 });
 
@@ -940,12 +1076,26 @@ app.get('/admin/manage-pts', requireAuth, (req, res) => {
 });
 
 app.post('/admin/create-pt', requireAuth, (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, name, specialty, experience_years, bio, profile_picture } = req.body;
   if (!username || !password) return res.send('Bắt buộc nhập username và password');
+  
   db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`,
-         [username, password, 'pt'], (err) => {
+         [username, password, 'pt'], function(err) {
     if (err) return res.send('Lỗi tạo PT - có thể username đã tồn tại');
-    res.redirect('/admin/manage-pts');
+    
+    const ptUserId = this.lastID;
+    const ptName = name && name.trim() ? name.trim() : username;
+    
+    db.run(`INSERT INTO pts (user_id, name, specialty, experience_years, bio, profile_picture) 
+            VALUES (?, ?, ?, ?, ?, ?)`,
+           [ptUserId, ptName, specialty || '', parseInt(experience_years) || 0, bio || '', profile_picture || ''], 
+           (err2) => {
+      if (err2) {
+        console.error('Error creating PT profile:', err2);
+        // PT user was created but profile failed - not critical
+      }
+      res.redirect('/admin/manage-pts');
+    });
   });
 });
 
@@ -1118,7 +1268,87 @@ app.get('/receptionist/dashboard', requireAuth, (req, res) => {
 });
 
 app.get('/pt/dashboard', requireAuth, (req, res) => {
-  res.render('pt-dashboard');
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  
+  const ptUserId = req.session.user.id;
+  
+  // Get PT info
+  db.get(`SELECT * FROM pts WHERE user_id = ?`, [ptUserId], (err, pt) => {
+    if (err || !pt) return res.send('PT profile not found');
+    
+    // Get upcoming sessions (confirmed & pending)
+    const today = new Date().toISOString().split('T')[0];
+    db.all(`SELECT ps.*, m.name as member_name, m.phone as member_phone 
+            FROM pt_sessions ps 
+            JOIN members m ON ps.member_id = m.id 
+            WHERE ps.pt_id = ? AND ps.date >= ? 
+            ORDER BY ps.date ASC`, [pt.id, today], (err, sessions) => {
+      if (err) return res.send('Lỗi lấy lịch dạy');
+      
+      // Get pending bookings (not yet confirmed and not rejected)
+      db.all(`SELECT ps.*, m.name as member_name, m.phone as member_phone 
+              FROM pt_sessions ps 
+              JOIN members m ON ps.member_id = m.id 
+              WHERE ps.pt_id = ? AND (ps.confirmed = 0 OR ps.confirmed IS NULL) AND (ps.rejection_reason IS NULL OR ps.rejection_reason = '') 
+              ORDER BY ps.date ASC`, [pt.id], (err2, pendingBookings) => {
+        if (err2) {
+          console.error('Lỗi lấy pending bookings:', err2);
+          pendingBookings = [];
+        }
+        res.render('pt-dashboard', { pt, sessions: sessions || [], pendingBookings: pendingBookings || [] });
+      });
+    });
+  });
+});
+
+// PT update profile
+app.get('/pt/edit-profile', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  
+  const ptUserId = req.session.user.id;
+  db.get(`SELECT * FROM pts WHERE user_id = ?`, [ptUserId], (err, pt) => {
+    if (err || !pt) return res.send('PT profile not found');
+    res.render('pt-edit-profile', { pt });
+  });
+});
+
+app.post('/pt/update-profile', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  
+  const ptUserId = req.session.user.id;
+  const { name, specialty, experience_years, bio, profile_picture } = req.body;
+  
+  db.run(`UPDATE pts SET name = ?, specialty = ?, experience_years = ?, bio = ?, profile_picture = ? WHERE user_id = ?`,
+         [name || '', specialty || '', parseInt(experience_years) || 0, bio || '', profile_picture || '', ptUserId], (err) => {
+    if (err) return res.send('Lỗi cập nhật thông tin');
+    res.redirect('/pt/dashboard');
+  });
+});
+
+// PT reject session with reason
+app.post('/pt/reject/:id', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  
+  const sessionId = parseInt(req.params.id);
+  const ptUserId = req.session.user.id;
+  const { rejection_reason } = req.body;
+  
+  // Verify session belongs to this PT
+  db.get(`SELECT ps.*, p.name as pt_name FROM pt_sessions ps JOIN pts p ON ps.pt_id = p.id WHERE ps.id = ? AND p.user_id = ?`, 
+         [sessionId, ptUserId], (err, session) => {
+    if (err || !session) return res.send('Buổi học không tồn tại');
+    
+    db.run(`UPDATE pt_sessions SET rejection_reason = ?, confirmed = -1 WHERE id = ?`, 
+           [rejection_reason || 'Không lý do', sessionId], (err) => {
+      if (err) return res.send('Lỗi từ chối lịch');
+      
+      // Create notification for member
+      const message = `❌ PT ${session.pt_name} từ chối buổi tập ngày ${session.date}. Lý do: ${rejection_reason || 'Không lý do'}`;
+      createNotification({ member_id: session.member_id, message, status: 'rejected', origin: 'pt_rejection' });
+      
+      res.redirect('/pt/dashboard');
+    });
+  });
 });
 
 app.get('/member/dashboard', requireAuth, (req, res) => {
@@ -1151,6 +1381,53 @@ app.get('/member-dashboard', (req, res) => {
   res.redirect('/member/dashboard');
 });
 
+// Member PT booking
+app.get('/member/book-pt', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'member') return res.redirect('/login');
+  
+  db.all(`SELECT p.*, u.username FROM pts p JOIN users u ON p.user_id = u.id`, [], (err, pts) => {
+    if (err) return res.send('Lỗi lấy danh sách PT');
+    res.render('member-book-pt', { pts: pts || [] });
+  });
+});
+
+app.post('/member/book-pt', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'member') return res.redirect('/login');
+  
+  const { pt_id, date } = req.body;
+  const member_id = req.session.user.member_id;
+  
+  // Check if member has PT sessions left
+  db.get(`SELECT pt_sessions, name as member_name FROM members WHERE id = ?`, [member_id], (err, member) => {
+    if (err || !member) return res.send('Lỗi lấy thông tin hội viên');
+    if (member.pt_sessions <= 0) return res.send('Bạn đã hết buổi PT. Vui lòng gia hạn!');
+    
+    // Check conflict
+    checkPTConflict(member_id, pt_id, date, (err, hasConflict) => {
+      if (hasConflict) return res.send('PT này đã có lịch vào ngày này');
+      
+      db.run(`INSERT INTO pt_sessions (member_id, pt_id, date) VALUES (?, ?, ?)`, [member_id, pt_id, date], (err) => {
+        if (err) return res.send('Lỗi đặt lịch PT');
+        
+        // Get PT info to send notifications
+        db.get(`SELECT user_id, name as pt_name FROM pts WHERE id = ?`, [pt_id], (err, pt) => {
+          if (pt) {
+            // Create notification for PT
+            const ptMessage = `📅 Hội viên ${member.member_name} vừa đặt lịch dạy ngày ${date}. Hãy xác nhận hoặc từ chối!`;
+            createNotification({ receiver_user_id: pt.user_id, message: ptMessage, status: 'info', origin: 'member_booking' });
+            
+            // Create notification for Member
+            const memberMessage = `✅ Bạn đã đặt lịch PT với ${pt.pt_name} vào ngày ${date}. Chờ PT xác nhận!`;
+            createNotification({ member_id: member_id, message: memberMessage, status: 'info', origin: 'booking_confirmation' });
+          }
+        });
+        
+        res.redirect('/member/dashboard');
+      });
+    });
+  });
+});
+
 app.get('/dashboard', (req, res) => {
   db.all(`SELECT floor, COUNT(*) as count FROM access_logs 
           WHERE timestamp > datetime('now', '-1 hour') 
@@ -1164,16 +1441,41 @@ app.get('/dashboard', (req, res) => {
   });
 });
 
+// PT reports - statistics for PT's sessions
+app.get('/pt/reports', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  
+  const ptUserId = req.session.user.id;
+  db.get(`SELECT id FROM pts WHERE user_id = ?`, [ptUserId], (err, pt) => {
+    if (err || !pt) return res.send('PT not found');
+    
+    const ptId = pt.id;
+    db.get(`SELECT COUNT(*) as pt_confirmed FROM pt_sessions WHERE pt_id = ? AND confirmed = 1`, [ptId], (err, ptRow) => {
+      db.get(`SELECT COUNT(*) as pt_pending FROM pt_sessions WHERE pt_id = ? AND (confirmed = 0 OR confirmed IS NULL)`, [ptId], (err2, pendingRow) => {
+        db.get(`SELECT COUNT(*) as pt_rejected FROM pt_sessions WHERE pt_id = ? AND rejection_reason IS NOT NULL`, [ptId], (err3, rejectedRow) => {
+          res.render('pt-reports', { 
+            pt_confirmed: ptRow?.pt_confirmed || 0,
+            pt_pending: pendingRow?.pt_pending || 0,
+            pt_rejected: rejectedRow?.pt_rejected || 0
+          });
+        });
+      });
+    });
+  });
+});
+
 app.get('/admin/reports', (req, res) => {
   db.get(`SELECT COUNT(*) as member_count FROM members`, [], (err, memberRow) => {
     db.get(`SELECT COUNT(*) as access_count FROM access_logs`, [], (err, accessRow) => {
       db.get(`SELECT COUNT(*) as pt_confirmed FROM pt_sessions WHERE confirmed = 1`, [], (err, ptRow) => {
-        const revenue = (memberRow?.member_count || 0) * 100; // Mock
-        res.render('reports', { 
-          revenue, 
-          members: memberRow?.member_count || 0, 
-          accesses: accessRow?.access_count || 0,
-          pt_confirmed: ptRow?.pt_confirmed || 0
+        db.get(`SELECT SUM(amount) as total_revenue FROM payments WHERE status = 'completed'`, [], (err, revenueRow) => {
+          const revenue = revenueRow?.total_revenue || 0;
+          res.render('reports', { 
+            revenue, 
+            members: memberRow?.member_count || 0, 
+            accesses: accessRow?.access_count || 0,
+            pt_confirmed: ptRow?.pt_confirmed || 0
+          });
         });
       });
     });
@@ -1182,6 +1484,23 @@ app.get('/admin/reports', (req, res) => {
 
 app.get('/receptionist/notifications', requireAuth, (req, res) => {
   db.all(`SELECT n.*, m.name AS member_name FROM notifications n LEFT JOIN members m ON n.member_id = m.id ORDER BY n.created_at DESC LIMIT 50`, [], (err, notes) => {
+    if (err) return res.send('Lỗi lấy thông báo');
+    res.render('receptionist-notifications', { notifications: notes || [] });
+  });
+});
+
+// PT notifications
+app.get('/pt/notifications', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  const ptUserId = req.session.user.id;
+  db.all(`SELECT * FROM notifications WHERE receiver_user_id = ? ORDER BY created_at DESC LIMIT 50`, [ptUserId], (err, notes) => {
+    if (err) return res.send('Lỗi lấy thông báo');
+    res.render('pt-notifications', { notifications: notes || [] });
+  });
+});
+
+app.get('/admin/notifications', requireAuth, (req, res) => {
+  db.all(`SELECT n.*, m.name AS member_name FROM notifications n LEFT JOIN members m ON n.member_id = m.id ORDER BY n.created_at DESC LIMIT 100`, [], (err, notes) => {
     if (err) return res.send('Lỗi lấy thông báo');
     res.render('receptionist-notifications', { notifications: notes || [] });
   });

@@ -242,13 +242,14 @@
         });
 
         const result = await response.json();
+        const notificationType = ['success', 'expired', 'restricted'].includes(result.type) ? result.type : 'error';
 
         if (result.success) {
-          showNotification(result.message, 'success');
+          showNotification(result.message, notificationType);
           playSuccessSound();
           showMemberDetails(result.member, result.floor, result.timestamp);
         } else {
-          showNotification(result.message, result.type || 'error');
+          showNotification(result.message, notificationType);
           playErrorSound();
           if (result.member) {
             showMemberDetails(result.member, floor);

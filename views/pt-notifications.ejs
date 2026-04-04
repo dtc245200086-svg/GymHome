@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🔔 Thông Báo Hội Viên</title>
+  <title>🔔 Thông Báo PT</title>
   <link rel="stylesheet" href="/style.css">
   <style>
     .notification-item {
@@ -40,16 +40,16 @@
       border-radius: 3px;
       margin-top: 8px;
     }
+    .status-info {
+      background: #2196F3;
+      color: white;
+    }
     .status-success {
       background: #4caf50;
       color: white;
     }
     .status-rejected {
       background: #f44336;
-      color: white;
-    }
-    .status-info {
-      background: #2196F3;
       color: white;
     }
     .status-warning {
@@ -60,19 +60,19 @@
 </head>
 <body>
   <header>
-    <h1>🔔 THÔNG BÁO HỘI VIÊN</h1>
-    <p>Cập nhật về thanh toán, đặt lịch PT và phản hồi từ PT</p>
+    <h1>🔔 THÔNG BÁO PT COACH</h1>
+    <p>Cập nhật từ hội viên và hệ thống</p>
   </header>
 
   <div class="container">
     <div style="text-align: center; margin: 20px 0; padding: 15px; background: #2a2a2a; border-radius: 8px;">
       <button onclick="location.reload()" class="btn" style="background: #2196F3;">🔄 Làm Mới Dữ Liệu</button>
-      <p style="color: #aaa; font-size: 0.9em; margin-top: 10px;">Trang sẽ tự động làm mới mỗi 20 giây để hiển thị thông báo mới</p>
+      <p style="color: #aaa; font-size: 0.9em; margin-top: 10px;">Trang sẽ tự động làm mới mỗi 30 giây</p>
     </div>
 
     <% if (notifications.length === 0) { %>
       <div class="alert" style="margin: 20px 0;">
-        ✨ Không có thông báo mới
+        ✨ Không có thông báo mới. Bạn đã xử lý hết!
       </div>
     <% } else { %>
       <div style="margin-bottom: 20px;">
@@ -80,14 +80,13 @@
           let notifClass = 'booking';
           if (n.origin === 'pt_rejection') notifClass = 'rejection';
           else if (n.origin === 'payment') notifClass = 'payment';
-          else if (n.origin === 'member_booking') notifClass = 'booking';
         %>
           <div class="notification-item <%= notifClass %>">
             <div class="notification-message"><%= n.message %></div>
             <div class="notification-status status-<%= n.status %>">
+              <%= n.status === 'info' ? '📋' : '' %>
               <%= n.status === 'success' ? '✅' : '' %>
               <%= n.status === 'rejected' ? '❌' : '' %>
-              <%= n.status === 'info' ? 'ℹ️' : '' %>
               <%= n.status === 'warning' ? '⚠️' : '' %>
               <%= n.status %>
             </div>
@@ -100,15 +99,13 @@
     <% } %>
 
     <div style="text-align: center; margin-top: 30px;">
-      <a href="/member/dashboard" class="btn">← Quay lại Dashboard</a>
+      <a href="/pt/dashboard" class="btn">← Quay lại Dashboard</a>
     </div>
   </div>
 
   <script>
-    // Auto-refresh page every 20 seconds for real-time notifications
+    // Auto-refresh page every 30 seconds for real-time notifications
     setInterval(function() {
       location.reload();
-    }, 20000);
+    }, 30000);
   </script>
-</body>
-</html>

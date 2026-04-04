@@ -74,6 +74,7 @@
           <span>👥 Hiện tại: <strong><%= floor.current_count %></strong> / <%= floor.max_capacity %></span>
           <span>📊 <strong><%= floor.usage_percent %>%</strong> sức chứa</span>
         </div>
+        <p style="color: #ccc; margin: 10px 0;"><%= floor.description %></p>
         
         <form method="post" action="/admin/floor-capacity/<%= floor.floor %>" style="margin-top: 15px;">
           <label for="max_<%= floor.floor %>">Cập nhật sức chứa tối đa:</label>

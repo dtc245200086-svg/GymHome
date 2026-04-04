@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏃 Đặt Lịch PT - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .pt-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .pt-card {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 4px solid #ff6b35;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+    .pt-card img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 15px;
+      border: 3px solid #ff6b35;
+    }
+    .pt-card h4 {
+      color: #ff6b35;
+      margin: 10px 0;
+    }
+    .pt-card p {
+      color: #ccc;
+      margin: 5px 0;
+    }
+    .booking-form {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      color: #ff6b35;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-group select, .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #555;
+      border-radius: 5px;
+      background: #333;
+      color: white;
+      font-size: 1em;
+    }
+    .form-group select:focus, .form-group input:focus {
+      border-color: #ff6b35;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏃 ĐẶT LỊCH HUẤN LUYỆN VIÊN CÁ NHÂN</h1>
+    <p>Chọn PT và đặt lịch tập luyện</p>
+  </header>
+
+  <div class="container">
+    <h2>👥 Danh Sách Huấn Luyện Viên</h2>
+    <div class="pt-grid">
+      <% pts.forEach(pt => { %>
+        <div class="pt-card">
+          <img src="<%= pt.profile_picture || '/default-pt.jpg' %>" alt="<%= pt.name %>">
+          <h4><%= pt.name %></h4>
+          <p><strong>Chuyên Môn:</strong> <%= pt.specialty %></p>
+          <p><strong>Kinh Nghiệm:</strong> <%= pt.experience_years %> năm</p>
+          <p><%= pt.bio %></p>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="booking-form">
+      <h3>📅 Đặt Lịch Tập</h3>
+      <form action="/member/book-pt" method="POST">
+        <div class="form-group">
+          <label for="pt_id">Chọn Huấn Luyện Viên:</label>
+          <select name="pt_id" id="pt_id" required>
+            <option value="">-- Chọn PT --</option>
+            <% pts.forEach(pt => { %>
+              <option value="<%= pt.id %>"><%= pt.name %> - <%= pt.specialty %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="date">Chọn Ngày:</label>
+          <input type="date" name="date" id="date" min="<%= new Date().toISOString().split('T')[0] %>" required>
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">📅 Đặt Lịch</button>
+      </form>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/member/dashboard" class="btn">⬅️ Quay Lại Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>
