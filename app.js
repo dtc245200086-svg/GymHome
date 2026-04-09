@@ -656,9 +656,22 @@ app.post('/access', (req, res) => {
         return res.json({ success: false, message, type: 'expired', member });
       }
 
-      const isRegularRestricted = member.type === 'Regular' && floorNumber > 3;
-      if (isRegularRestricted) {
-        const message = `❌ Thẻ ${member.type} chỉ được vào tầng 1-3. Vui lòng tạo lại mã QR hoặc xuống quầy lễ tân để được hỗ trợ.`;
+      const isVIP = member.type === 'VIP';
+      const isRegular = member.type === 'Regular';
+      const isTrial = member.type === 'Trial';
+      const isFloorAllowed = isVIP || (isRegular && floorNumber >= 1 && floorNumber <= 3) || (isTrial && floorNumber === 1);
+      if (!isFloorAllowed) {
+        let message;
+        if (isVIP) {
+          message = '❌ Thẻ VIP được vào mọi tầng. Vui lòng gặp lễ tân nếu vẫn gặp lỗi.';
+        } else if (isRegular) {
+          message = '❌ Thẻ Regular chỉ được vào tầng 1-3. Vui lòng gặp lễ tân để nâng cấp nếu cần.';
+        } else if (isTrial) {
+          message = '❌ Thẻ Trial chỉ được vào tầng 1. Vui lòng gặp lễ tân để được hướng dẫn.';
+        } else {
+          message = '❌ Thẻ không hợp lệ cho tầng này. Vui lòng gặp lễ tân để được hỗ trợ.';
+        }
+
         createNotification({ member_id, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
         return res.json({ success: false, message, type: 'restricted', member });
       }
@@ -692,41 +705,50 @@ app.post('/access', (req, res) => {
             }
 
             const processAttendance = () => {
-              const responseMember = { ...member };
+              const finishResponse = () => {
+                db.get(`SELECT * FROM members WHERE id = ?`, [member_id], (err, updatedMember) => {
+                  const responseMember = updatedMember || member;
+                  const message = alreadyCheckedIn
+                    ? `✅ ${member.name} đã được xác nhận hôm nay. Mở cửa tầng ${floorNumber}`
+                    : `✅ Hội viên ${member.name} hợp lệ. Mở cửa tầng ${floorNumber}.`;
+
+                  createNotification({ member_id, floor: floorNumber, message, status: 'success', origin: 'scanner' });
+                  return res.json({
+                    success: true,
+                    message,
+                    type: 'success',
+                    member: {
+                      name: responseMember.name,
+                      phone: responseMember.phone,
+                      type: responseMember.type,
+                      expiry: responseMember.expiry,
+                      pt_sessions: responseMember.pt_sessions
+                    },
+                    floor: floorNumber,
+                    timestamp: new Date().toLocaleTimeString('vi-VN'),
+                    alreadyCheckedIn
+                  });
+                });
+              };
+
+              const updateFloorCapacity = () => {
+                db.run(`UPDATE floor_capacity SET current_count = current_count + 1 WHERE floor = ?`, [floorNumber], (err) => {
+                  if (err) console.log('Error updating floor capacity:', err);
+                  finishResponse();
+                });
+              };
+
               if (!alreadyCheckedIn) {
-                responseMember.pt_sessions = Math.max(0, member.pt_sessions - 1);
-                db.run(`UPDATE members SET pt_sessions = pt_sessions - 1 WHERE id = ?`, [member_id], (err) => {
+                db.run(`UPDATE members SET pt_sessions = CASE WHEN pt_sessions > 0 THEN pt_sessions - 1 ELSE 0 END WHERE id = ?`, [member_id], (err) => {
                   if (err) console.error('Lỗi cập nhật số buổi tập:', err);
+                  db.run(`INSERT INTO attendance (member_id, date, check_in_time) VALUES (?, ?, ?)`, [member_id, today, new Date().toLocaleTimeString('vi-VN')], (err) => {
+                    if (err) console.error('Lỗi tạo attendance:', err);
+                    updateFloorCapacity();
+                  });
                 });
-                db.run(`INSERT INTO attendance (member_id, date, check_in_time) VALUES (?, ?, ?)`, [member_id, today, new Date().toLocaleTimeString('vi-VN')], (err) => {
-                  if (err) console.error('Lỗi tạo attendance:', err);
-                });
+              } else {
+                updateFloorCapacity();
               }
-
-              db.run(`UPDATE floor_capacity SET current_count = current_count + 1 WHERE floor = ?`, [floorNumber], (err) => {
-                if (err) console.log('Error updating floor capacity:', err);
-
-                const message = alreadyCheckedIn
-                  ? `✅ ${member.name} đã được xác nhận hôm nay. Mở cửa tầng ${floorNumber}`
-                  : `✅ Chào mừng ${member.name}! Mở cửa tầng ${floorNumber}`;
-
-                createNotification({ member_id, floor: floorNumber, message, status: 'success', origin: 'scanner' });
-                return res.json({
-                  success: true,
-                  message,
-                  type: 'success',
-                  member: {
-                    name: member.name,
-                    phone: member.phone,
-                    type: member.type,
-                    expiry: member.expiry,
-                    pt_sessions: responseMember.pt_sessions
-                  },
-                  floor: floorNumber,
-                  timestamp: new Date().toLocaleTimeString('vi-VN'),
-                  alreadyCheckedIn
-                });
-              });
             };
 
             processAttendance();
@@ -738,7 +760,7 @@ app.post('/access', (req, res) => {
 
   findQr((err, qr) => {
     if (err || !qr) {
-      const message = '❌ QR không hợp lệ hoặc không phải mã hệ thống. Vui lòng sử dụng QR do Gym Home tạo.';
+      const message = '❌ QR không hợp lệ. Vui lòng gặp lễ tân để được hỗ trợ.';
       createNotification({ member_id: payload?.member_id || null, floor: floorNumber, message, status: 'fail', origin: 'scanner' });
       notifyStaff(message, floorNumber);
       return res.json({ success: false, message, type: 'error' });
@@ -1461,6 +1483,25 @@ app.get('/member/dashboard', requireAuth, (req, res) => {
   }
 });
 
+app.get('/member/data', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'member') {
+    return res.status(403).json({ success: false, message: 'Không đủ quyền truy cập' });
+  }
+
+  const memberId = req.session.user.member_id;
+  if (!memberId) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy hội viên' });
+  }
+
+  db.get(`SELECT * FROM members WHERE id = ?`, [memberId], (err, member) => {
+    if (err || !member) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hội viên' });
+    }
+
+    res.json({ success: true, member });
+  });
+});
+
 // Redirect tiện lợi từ /member-dashboard (với dấu -) sang đúng route
 app.get('/member-dashboard', (req, res) => {
   res.redirect('/member/dashboard');
@@ -1497,17 +1538,18 @@ app.post('/member/book-pt', requireAuth, (req, res) => {
         // Get PT info to send notifications
         db.get(`SELECT user_id, name as pt_name FROM pts WHERE id = ?`, [pt_id], (err, pt) => {
           if (pt) {
+            const memberName = member.member_name || member.name || 'hội viên';
             // Create notification for PT
-            const ptMessage = `📅 Hội viên ${member.member_name} vừa đặt lịch dạy ngày ${date}. Hãy xác nhận hoặc từ chối!`;
+            const ptMessage = `📅 Hội viên ${memberName} vừa đặt lịch dạy ngày ${date}. Hãy xác nhận hoặc từ chối!`;
             createNotification({ receiver_user_id: pt.user_id, message: ptMessage, status: 'info', origin: 'member_booking' });
             
             // Create notification for Member
-            const memberMessage = `✅ Bạn đã đặt lịch PT với ${pt.pt_name} vào ngày ${date}. Chờ PT xác nhận!`;
+            const memberMessage = `✅ Bạn đã gửi yêu cầu đặt lịch với ${pt.pt_name} vào ngày ${date}. Chờ PT xác nhận hoặc từ chối.`;
             createNotification({ member_id: member_id, message: memberMessage, status: 'info', origin: 'booking_confirmation' });
           }
         });
         
-        res.redirect('/member/dashboard');
+        res.redirect('/member/notifications');
       });
     });
   });

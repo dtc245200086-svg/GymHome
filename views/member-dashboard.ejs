@@ -109,13 +109,13 @@
       </div>
       <div class="info-card">
         <h4>📅 Hạn Thẻ</h4>
-        <p class="<%= new Date(member.expiry) <= new Date(Date.now() + 5*24*60*60*1000) ? 'status-critical' : (new Date(member.expiry) <= new Date(Date.now() + 30*24*60*60*1000) ? 'status-warning' : 'status-good') %>">
+        <p id="member-expiry" class="<%= new Date(member.expiry) <= new Date(Date.now() + 5*24*60*60*1000) ? 'status-critical' : (new Date(member.expiry) <= new Date(Date.now() + 30*24*60*60*1000) ? 'status-warning' : 'status-good') %>">
           <%= member.expiry %>
         </p>
       </div>
       <div class="info-card">
         <h4>🏃 Buổi PT Còn Lại</h4>
-        <p class="<%= member.pt_sessions < 2 ? 'status-critical' : (member.pt_sessions < 5 ? 'status-warning' : 'status-good') %>">
+        <p id="member-pt-sessions" class="<%= member.pt_sessions < 2 ? 'status-critical' : (member.pt_sessions < 5 ? 'status-warning' : 'status-good') %>">
           <%= member.pt_sessions %> Buổi
         </p>
       </div>
@@ -154,5 +154,34 @@
       <a href="/logout" class="logout">🚪 Đăng Xuất</a>
     </div>
   </div>
+
+  <script>
+    async function refreshMemberData() {
+      try {
+        const response = await fetch('/member/data');
+        if (!response.ok) return;
+
+        const result = await response.json();
+        if (!result.success || !result.member) return;
+
+        const expiryEl = document.getElementById('member-expiry');
+        const sessionsEl = document.getElementById('member-pt-sessions');
+        if (!expiryEl || !sessionsEl) return;
+
+        expiryEl.textContent = result.member.expiry;
+        sessionsEl.textContent = `${result.member.pt_sessions} Buổi`;
+        sessionsEl.className = result.member.pt_sessions < 2
+          ? 'status-critical'
+          : (result.member.pt_sessions < 5 ? 'status-warning' : 'status-good');
+      } catch (err) {
+        console.warn('Không thể đồng bộ dữ liệu hội viên:', err);
+      }
+    }
+
+    window.addEventListener('load', () => {
+      refreshMemberData();
+      setInterval(refreshMemberData, 5000);
+    });
+  </script>
 </body>
 </html>

@@ -80,6 +80,7 @@
           let notifClass = 'booking';
           if (n.origin === 'pt_rejection') notifClass = 'rejection';
           else if (n.origin === 'payment') notifClass = 'payment';
+          else if (n.origin === 'member_booking') notifClass = 'booking';
         %>
           <div class="notification-item <%= notifClass %>">
             <div class="notification-message"><%= n.message %></div>
@@ -104,8 +105,8 @@
   </div>
 
   <script>
-    // Auto-refresh page every 30 seconds for real-time notifications
+    // Auto-refresh page every 10 seconds for faster notification sync
     setInterval(function() {
       location.reload();
-    }, 30000);
+    }, 10000);
   </script>
