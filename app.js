@@ -1574,6 +1574,29 @@ app.post('/pt/complete/:id', requireAuth, (req, res) => {
   });
 });
 
+app.post('/pt/reject-today/:id', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  const sessionId = parseInt(req.params.id, 10);
+  const ptUserId = req.session.user.id;
+  const today = new Date().toISOString().split('T')[0];
+  const { rejection_reason } = req.body;
+
+  db.get(`SELECT ps.*, p.name as pt_name FROM pt_sessions ps JOIN pts p ON ps.pt_id = p.id WHERE ps.id = ? AND p.user_id = ?`,
+         [sessionId, ptUserId], (err, session) => {
+    if (err || !session) return res.send('Buổi học không tồn tại');
+    if (!session.confirmed) return res.send('Buổi tập chưa được xác nhận');
+    if (session.completed) return res.send('Buổi tập đã được xác nhận hoàn thành');
+    if (session.date !== today) return res.send('Chỉ có thể từ chối buổi tập trong ngày hôm đó');
+
+    db.run(`UPDATE pt_sessions SET confirmed = FALSE, rejection_reason = ? WHERE id = ?`, [rejection_reason || 'PT bận, vui lòng chọn lịch khác', sessionId], (err2) => {
+      if (err2) return res.send('Lỗi từ chối buổi tập');
+      const message = `❌ PT ${session.pt_name} không thể nhận buổi tập ngày ${session.date}. Lý do: ${rejection_reason || 'PT bận, vui lòng chọn lịch khác'}`;
+      createNotification({ member_id: session.member_id, message, status: 'rejected', origin: 'pt_training_rejected' });
+      res.redirect('/pt/today-sessions');
+    });
+  });
+});
+
 app.get('/member/dashboard', requireAuth, (req, res) => {
   if (req.session.user.role !== 'member') return res.redirect('/login');
   

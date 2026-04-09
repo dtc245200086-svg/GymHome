@@ -40,6 +40,17 @@
     .btn-confirm:hover {
       background: #45a049;
     }
+    .btn-reject {
+      background: #f44336;
+      color: white;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn-reject:hover {
+      background: #d32f2f;
+    }
     .status-confirmed {
       color: #4caf50;
       font-weight: bold;
@@ -55,6 +66,68 @@
     }
     .btn-secondary:hover {
       background: #1976D2;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.6);
+    }
+    .modal-content {
+      background-color: #1e1e1e;
+      margin: 10% auto;
+      padding: 20px;
+      border: 1px solid #444;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 12px;
+      color: #fff;
+    }
+    .modal-close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .modal-close:hover,
+    .modal-close:focus {
+      color: #fff;
+    }
+    .modal-header {
+      font-size: 18px;
+      margin-bottom: 12px;
+      font-weight: bold;
+    }
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .btn-cancel,
+    .btn-submit-reject {
+      border: none;
+      border-radius: 6px;
+      padding: 10px 18px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-cancel {
+      background: #555;
+      color: #fff;
+    }
+    .btn-submit-reject {
+      background: #ff6b35;
+      color: #fff;
+    }
+    .btn-submit-reject:hover {
+      background: #e65119;
     }
   </style>
 </head>
@@ -85,9 +158,10 @@
               <td><%= session.date %></td>
               <td class="status-confirmed">✅ Đã xác nhận booking</td>
               <td>
-                <form action="/pt/complete/<%= session.id %>" method="POST" style="display:inline;">
-                  <button type="submit" class="btn-confirm">Xác Nhận Buổi Tập</button>
+                <form action="/pt/complete/<%= session.id %>" method="POST" style="display:inline; margin-right: 8px;">
+                  <button type="submit" class="btn-confirm">Xác Nhận</button>
                 </form>
+                <button type="button" class="btn-reject" onclick="openRejectModal(<%= session.id %>, '<%= session.member_name %>', '<%= session.date %>')">Từ Chối</button>
               </td>
             </tr>
           <% }); %>
@@ -97,5 +171,44 @@
 
     <a href="/pt/dashboard" class="btn-secondary">⬅️ Quay về Dashboard</a>
   </div>
+
+  <!-- Reject Modal -->
+  <div id="rejectModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeRejectModal()">&times;</span>
+      <div class="modal-header">❌ Từ chối buổi tập hôm nay</div>
+      <form id="rejectForm" method="POST">
+        <p style="color: #ccc;">Hội Viên: <span id="modalMemberName" style="color: #ff6b35;"></span></p>
+        <p style="color: #ccc;">Ngày: <span id="modalSessionDate" style="color: #ff6b35;"></span></p>
+        <label for="rejection_reason" style="color: #fff; display:block; margin-bottom: 8px;">Lý do từ chối (bắt buộc):</label>
+        <textarea id="rejection_reason" name="rejection_reason" required placeholder="Ví dụ: Tôi bận, đã có lịch khác, hoặc cần chuyển buổi" style="width:100%; min-height:100px; margin-bottom:12px; padding:10px; border-radius:6px; border:1px solid #444; background:#1b1b1b; color:#fff;"></textarea>
+        <div class="modal-buttons">
+          <button type="button" class="btn-cancel" onclick="closeRejectModal()">Hủy</button>
+          <button type="submit" class="btn-submit-reject">Gửi Lý Do</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openRejectModal(sessionId, memberName, sessionDate) {
+      document.getElementById('modalMemberName').textContent = memberName;
+      document.getElementById('modalSessionDate').textContent = sessionDate;
+      document.getElementById('rejection_reason').value = '';
+      document.getElementById('rejectForm').action = '/pt/reject-today/' + sessionId;
+      document.getElementById('rejectModal').style.display = 'block';
+    }
+
+    function closeRejectModal() {
+      document.getElementById('rejectModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+      const modal = document.getElementById('rejectModal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    }
+  </script>
 </body>
 </html>
