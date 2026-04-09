@@ -12,49 +12,6 @@ app.use(bodyParser.json());
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 
-// Session middleware
-let sessionConfig = {
-  secret: process.env.SESSION_SECRET || 'gymhome-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
-};
-
-if (usePg) {
-  sessionConfig.store = new PgSession({
-    pool: pgPool,
-    tableName: 'session'
-  });
-}
-
-app.use(session(sessionConfig));
-
-// Set user context for views
-app.use((req, res, next) => {
-  res.locals.user = req.session.user;
-
-  if (req.session.user) {
-    switch (req.session.user.role) {
-      case 'admin':
-        res.locals.dashboardPath = '/admin/dashboard';
-        break;
-      case 'receptionist':
-        res.locals.dashboardPath = '/receptionist/dashboard';
-        break;
-      case 'pt':
-        res.locals.dashboardPath = '/pt/dashboard';
-        break;
-      default:
-        res.locals.dashboardPath = '/member/dashboard';
-        break;
-    }
-  } else {
-    res.locals.dashboardPath = '/';
-  }
-
-  next();
-});
-
 // Database
 const envDatabaseUrl = (process.env.DATABASE_URL || '').trim();
 let usePg = false;
@@ -151,6 +108,85 @@ if (usePg) {
   sqliteDb = new sqlite3.Database('./gymhome.db');
 }
 
+function repairSqliteSerialTables() {
+  if (usePg || !sqliteDb) return;
+
+  const repairs = [
+    {
+      name: 'pts',
+      createSql: `CREATE TABLE pts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        name TEXT,
+        specialty TEXT,
+        experience_years INTEGER,
+        bio TEXT,
+        profile_picture TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )`,
+      copySql: `INSERT INTO pts (user_id, name, specialty, experience_years, bio, profile_picture)
+                SELECT user_id, name, specialty, experience_years, bio, profile_picture FROM pts_old`
+    },
+    {
+      name: 'notifications',
+      createSql: `CREATE TABLE notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        member_id INTEGER,
+        receiver_user_id INTEGER,
+        floor INTEGER,
+        message TEXT,
+        status TEXT,
+        origin TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      copySql: `INSERT INTO notifications (member_id, receiver_user_id, floor, message, status, origin, created_at)
+                SELECT member_id, receiver_user_id, floor, message, status, origin, created_at FROM notifications_old`
+    }
+  ];
+
+  repairs.forEach(repair => {
+    sqliteDb.all(`PRAGMA table_info(${repair.name})`, [], (err, rows) => {
+      if (err || !rows || rows.length === 0) return;
+      const idCol = rows.find(col => col.name === 'id');
+      if (idCol && idCol.type && idCol.type.toUpperCase() === 'SERIAL') {
+        sqliteDb.serialize(() => {
+          sqliteDb.run(`ALTER TABLE ${repair.name} RENAME TO ${repair.name}_old`, (err2) => {
+            if (err2) return console.error(`Lỗi đổi tên bảng ${repair.name}:`, err2);
+            sqliteDb.run(repair.createSql, (err3) => {
+              if (err3) return console.error(`Lỗi tạo lại bảng ${repair.name}:`, err3);
+              sqliteDb.run(repair.copySql, (err4) => {
+                if (err4) return console.error(`Lỗi copy dữ liệu vào bảng ${repair.name}:`, err4);
+                sqliteDb.run(`DROP TABLE ${repair.name}_old`, (err5) => {
+                  if (err5) console.error(`Lỗi xóa bảng cũ ${repair.name}_old:`, err5);
+                  console.log(`Đã sửa schema SQLite cho bảng ${repair.name}`);
+                });
+              });
+            });
+          });
+        });
+      }
+    });
+  });
+}
+
+repairSqliteSerialTables();
+
+let sessionConfig = {
+  secret: process.env.SESSION_SECRET || 'gymhome-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+};
+
+if (usePg) {
+  sessionConfig.store = new PgSession({
+    pool: pgPool,
+    tableName: 'session'
+  });
+}
+
+app.use(session(sessionConfig));
+
 // Init DB
 function initSchema() {
   const idType = usePg ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
@@ -191,6 +227,7 @@ function initSchema() {
     pt_id INTEGER,
     date DATE,
     confirmed BOOLEAN DEFAULT FALSE,
+    completed BOOLEAN DEFAULT FALSE,
     rejection_reason TEXT,
     FOREIGN KEY (pt_id) REFERENCES pts(id)
   )`, []);
@@ -292,6 +329,18 @@ if (!usePg) {
     }
   });
 
+  db.all(`PRAGMA table_info(pt_sessions)`, [], (err, columns) => {
+    if (!err && columns && !columns.some(col => col.name === 'completed')) {
+      db.run(`ALTER TABLE pt_sessions ADD COLUMN completed BOOLEAN DEFAULT FALSE`, [], (alterErr) => {
+        if (alterErr) {
+          console.error('Lỗi khi thêm cột completed vào pt_sessions:', alterErr);
+        } else {
+          console.log('Đã thêm cột completed vào pt_sessions (nâng cấp schema)');
+        }
+      });
+    }
+  });
+
   db.all(`PRAGMA table_info(qr_codes)`, [], (err, columns) => {
     if (!err && columns && !columns.some(col => col.name === 'token')) {
       db.run(`ALTER TABLE qr_codes ADD COLUMN token TEXT`, [], (alterErr) => {
@@ -309,7 +358,8 @@ if (!usePg) {
     try {
       await pgPool.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS receiver_user_id INTEGER`);
       await pgPool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS token TEXT`);
-      console.log('Đã kiểm tra/migrated schema PostgreSQL cho notifications và qr_codes');
+      await pgPool.query(`ALTER TABLE pt_sessions ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`);
+      console.log('Đã kiểm tra/migrated schema PostgreSQL cho notifications, qr_codes và pt_sessions');
     } catch (err) {
       console.error('Lỗi migration PostgreSQL schema:', err);
     }
@@ -1482,6 +1532,48 @@ app.post('/pt/reject/:id', requireAuth, (req, res) => {
   });
 });
 
+// PT today sessions page to confirm actual training dates
+app.get('/pt/today-sessions', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  const ptUserId = req.session.user.id;
+  const today = new Date().toISOString().split('T')[0];
+
+  db.get(`SELECT id FROM pts WHERE user_id = ?`, [ptUserId], (err, pt) => {
+    if (err || !pt) return res.send('PT profile not found');
+
+    db.all(`SELECT ps.*, m.name as member_name, m.phone as member_phone 
+            FROM pt_sessions ps 
+            JOIN members m ON ps.member_id = m.id 
+            WHERE ps.pt_id = ? AND ps.confirmed = TRUE AND (ps.completed IS NULL OR ps.completed = FALSE) AND ps.date = ? 
+            ORDER BY ps.date ASC`, [pt.id, today], (err2, sessions) => {
+      if (err2) return res.send('Lỗi lấy buổi tập hôm nay');
+      res.render('pt-today-sessions', { sessions: sessions || [], today });
+    });
+  });
+});
+
+app.post('/pt/complete/:id', requireAuth, (req, res) => {
+  if (req.session.user.role !== 'pt') return res.redirect('/login');
+  const sessionId = parseInt(req.params.id, 10);
+  const ptUserId = req.session.user.id;
+  const today = new Date().toISOString().split('T')[0];
+
+  db.get(`SELECT ps.*, p.name as pt_name FROM pt_sessions ps JOIN pts p ON ps.pt_id = p.id WHERE ps.id = ? AND p.user_id = ?`,
+         [sessionId, ptUserId], (err, session) => {
+    if (err || !session) return res.send('Buổi học không tồn tại');
+    if (!session.confirmed) return res.send('Buổi tập chưa được xác nhận');
+    if (session.completed) return res.send('Buổi tập đã được xác nhận hoàn thành');
+    if (session.date !== today) return res.send('Chỉ có thể xác nhận buổi tập vào ngày hôm đó');
+
+    db.run(`UPDATE pt_sessions SET completed = TRUE WHERE id = ?`, [sessionId], (err2) => {
+      if (err2) return res.send('Lỗi xác nhận buổi tập');
+      const message = `✅ PT ${session.pt_name} đã xác nhận bạn đã tập vào ngày ${session.date}.`;
+      createNotification({ member_id: session.member_id, message, status: 'success', origin: 'pt_training_confirmed' });
+      res.redirect('/pt/today-sessions');
+    });
+  });
+});
+
 app.get('/member/dashboard', requireAuth, (req, res) => {
   if (req.session.user.role !== 'member') return res.redirect('/login');
   
@@ -1546,34 +1638,37 @@ app.post('/member/book-pt', requireAuth, (req, res) => {
   
   const { pt_id, date } = req.body;
   const member_id = req.session.user.member_id;
+  const ptId = parseInt(pt_id, 10);
+  
+  if (!ptId || !date) {
+    return res.send('Vui lòng chọn PT và ngày hợp lệ');
+  }
   
   // Check if member has PT sessions left
   db.get(`SELECT pt_sessions, name as member_name FROM members WHERE id = ?`, [member_id], (err, member) => {
     if (err || !member) return res.send('Lỗi lấy thông tin hội viên');
     if (member.pt_sessions <= 0) return res.send('Bạn đã hết buổi PT. Vui lòng gia hạn!');
     
-    // Check conflict
-    checkPTConflict(member_id, pt_id, date, (err, hasConflict) => {
-      if (hasConflict) return res.send('PT này đã có lịch vào ngày này');
+    // Check if PT exists
+    db.get(`SELECT user_id, name as pt_name FROM pts WHERE id = ?`, [ptId], (err, pt) => {
+      if (err || !pt) return res.send('PT không tồn tại');
       
-      db.run(`INSERT INTO pt_sessions (member_id, pt_id, date) VALUES (?, ?, ?)`, [member_id, pt_id, date], (err) => {
-        if (err) return res.send('Lỗi đặt lịch PT');
+      // Check conflict
+      checkPTConflict(member_id, ptId, date, (err, hasConflict) => {
+        if (hasConflict) return res.send('PT này đã có lịch vào ngày này');
         
-        // Get PT info to send notifications
-        db.get(`SELECT user_id, name as pt_name FROM pts WHERE id = ?`, [pt_id], (err, pt) => {
-          if (pt) {
-            const memberName = member.member_name || member.name || 'hội viên';
-            // Create notification for PT
-            const ptMessage = `📅 Hội viên ${memberName} vừa đặt lịch dạy ngày ${date}. Hãy xác nhận hoặc từ chối!`;
-            createNotification({ receiver_user_id: pt.user_id, message: ptMessage, status: 'info', origin: 'member_booking' });
-            
-            // Create notification for Member
-            const memberMessage = `✅ Bạn đã gửi yêu cầu đặt lịch với ${pt.pt_name} vào ngày ${date}. Chờ PT xác nhận hoặc từ chối.`;
-            createNotification({ member_id: member_id, message: memberMessage, status: 'info', origin: 'booking_confirmation' });
-          }
+        db.run(`INSERT INTO pt_sessions (member_id, pt_id, date) VALUES (?, ?, ?)`, [member_id, ptId, date], (err) => {
+          if (err) return res.send('Lỗi đặt lịch PT');
+          
+          const memberName = member.member_name || member.name || 'hội viên';
+          const ptMessage = `📅 Hội viên ${memberName} vừa đặt lịch dạy ngày ${date}. Hãy xác nhận hoặc từ chối!`;
+          createNotification({ receiver_user_id: pt.user_id, message: ptMessage, status: 'info', origin: 'member_booking' });
+          
+          const memberMessage = `✅ Bạn đã gửi yêu cầu đặt lịch với ${pt.pt_name} vào ngày ${date}. Chờ PT xác nhận hoặc từ chối.`;
+          createNotification({ member_id: member_id, message: memberMessage, status: 'info', origin: 'booking_confirmation' });
+          
+          res.redirect('/member/notifications');
         });
-        
-        res.redirect('/member/notifications');
       });
     });
   });
@@ -1674,6 +1769,11 @@ app.get('/logout', (req, res) => {
 });
 
 const port = process.env.PORT || 3000;
+
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
 
 app.listen(port, () => {
   console.log(`GymHome Demo running on port ${port}`);

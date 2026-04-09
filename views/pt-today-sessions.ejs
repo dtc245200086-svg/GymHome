@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📅 Buổi Tập Hôm Nay - PT Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .sessions-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: #2a2a2a;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+    }
+    .sessions-table th, .sessions-table td {
+      padding: 15px;
+      text-align: left;
+      border-bottom: 1px solid #444;
+    }
+    .sessions-table th {
+      background: #ff6b35;
+      color: white;
+      font-weight: bold;
+    }
+    .sessions-table tr:hover {
+      background: #3a3a3a;
+    }
+    .btn-confirm {
+      background: #4caf50;
+      color: white;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-confirm:hover {
+      background: #45a049;
+    }
+    .status-confirmed {
+      color: #4caf50;
+      font-weight: bold;
+    }
+    .btn-secondary {
+      background: #2196F3;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 20px;
+    }
+    .btn-secondary:hover {
+      background: #1976D2;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📅 Buổi Tập Hôm Nay</h1>
+    <p>Danh sách buổi tập đã xác nhận cần xác nhận thực tế</p>
+  </header>
+  <div class="container">
+    <% if (sessions.length === 0) { %>
+      <p style="color: #ccc; font-style: italic; text-align: center;">Không có buổi tập nào cần xác nhận hôm nay.</p>
+    <% } else { %>
+      <table class="sessions-table">
+        <thead>
+          <tr>
+            <th>Hội Viên</th>
+            <th>Số Điện Thoại</th>
+            <th>Ngày</th>
+            <th>Trạng Thái</th>
+            <th>Hành Động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% sessions.forEach(session => { %>
+            <tr>
+              <td><%= session.member_name %></td>
+              <td><%= session.member_phone %></td>
+              <td><%= session.date %></td>
+              <td class="status-confirmed">✅ Đã xác nhận booking</td>
+              <td>
+                <form action="/pt/complete/<%= session.id %>" method="POST" style="display:inline;">
+                  <button type="submit" class="btn-confirm">Xác Nhận Buổi Tập</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <a href="/pt/dashboard" class="btn-secondary">⬅️ Quay về Dashboard</a>
+  </div>
+</body>
+</html>
