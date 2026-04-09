@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const qrcode = require('qrcode');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -12,12 +13,21 @@ app.set('view engine', 'ejs');
 app.use(express.static('public'));
 
 // Session middleware
-app.use(session({
+let sessionConfig = {
   secret: process.env.SESSION_SECRET || 'gymhome-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
-}));
+};
+
+if (usePg) {
+  sessionConfig.store = new PgSession({
+    pool: pgPool,
+    tableName: 'session'
+  });
+}
+
+app.use(session(sessionConfig));
 
 // Set user context for views
 app.use((req, res, next) => {
@@ -293,6 +303,17 @@ if (!usePg) {
       });
     }
   });
+} else {
+  // PostgreSQL migration for legacy schema
+  (async () => {
+    try {
+      await pgPool.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS receiver_user_id INTEGER`);
+      await pgPool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS token TEXT`);
+      console.log('Đã kiểm tra/migrated schema PostgreSQL cho notifications và qr_codes');
+    } catch (err) {
+      console.error('Lỗi migration PostgreSQL schema:', err);
+    }
+  })();
 }
 
 if (!usePg) {
@@ -415,7 +436,7 @@ function getPaymentQr(callback) {
 // Check for PT schedule conflicts
 function checkPTConflict(member_id, pt_id, date, callback) {
   db.get(`SELECT COUNT(*) as count FROM pt_sessions 
-          WHERE pt_id = ? AND date = ? AND confirmed = 0`, 
+          WHERE pt_id = ? AND date = ? AND confirmed = FALSE`, 
           [pt_id, date], (err, row) => {
     callback(err, row?.count > 0);
   });
@@ -788,7 +809,7 @@ app.post('/pt/confirm/:id', requireAuth, (req, res) => {
          [sessionId, ptUserId], (err, session) => {
     if (err || !session) return res.send('Buổi học không tồn tại hoặc không thuộc PT này');
     
-    db.run(`UPDATE pt_sessions SET confirmed = 1 WHERE id = ?`, [sessionId], (err) => {
+    db.run(`UPDATE pt_sessions SET confirmed = TRUE WHERE id = ?`, [sessionId], (err) => {
       if (err) return res.send('Lỗi xác nhận');
       
       // Create notification for member
@@ -1396,13 +1417,16 @@ app.get('/pt/dashboard', requireAuth, (req, res) => {
       db.all(`SELECT ps.*, m.name as member_name, m.phone as member_phone 
               FROM pt_sessions ps 
               JOIN members m ON ps.member_id = m.id 
-              WHERE ps.pt_id = ? AND (ps.confirmed = 0 OR ps.confirmed IS NULL) AND (ps.rejection_reason IS NULL OR ps.rejection_reason = '') 
+              WHERE ps.pt_id = ? AND (ps.confirmed = FALSE OR ps.confirmed IS NULL) AND (ps.rejection_reason IS NULL OR ps.rejection_reason = '') 
               ORDER BY ps.date ASC`, [pt.id], (err2, pendingBookings) => {
         if (err2) {
           console.error('Lỗi lấy pending bookings:', err2);
           pendingBookings = [];
         }
-        res.render('pt-dashboard', { pt, sessions: sessions || [], pendingBookings: pendingBookings || [] });
+        db.get(`SELECT COUNT(*) as count FROM notifications WHERE receiver_user_id = ?`, [ptUserId], (err3, result) => {
+          const notificationCount = result?.count || 0;
+          res.render('pt-dashboard', { pt, sessions: sessions || [], pendingBookings: pendingBookings || [], notificationCount });
+        });
       });
     });
   });
@@ -1445,7 +1469,7 @@ app.post('/pt/reject/:id', requireAuth, (req, res) => {
          [sessionId, ptUserId], (err, session) => {
     if (err || !session) return res.send('Buổi học không tồn tại');
     
-    db.run(`UPDATE pt_sessions SET rejection_reason = ?, confirmed = -1 WHERE id = ?`, 
+    db.run(`UPDATE pt_sessions SET rejection_reason = ?, confirmed = FALSE WHERE id = ?`, 
            [rejection_reason || 'Không lý do', sessionId], (err) => {
       if (err) return res.send('Lỗi từ chối lịch');
       

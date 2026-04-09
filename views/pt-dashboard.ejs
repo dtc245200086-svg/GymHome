@@ -258,6 +258,11 @@
         <h3>🔔 Thông Báo</h3>
         <p>Xem thông báo từ hội viên</p>
         <a href="/pt/notifications" class="btn">📬 Xem Thông Báo</a>
+        <% if (typeof notificationCount !== 'undefined' && notificationCount > 0) { %>
+          <div style="margin-top: 12px; color: #ffd700; font-weight: bold;">Bạn có <%= notificationCount %> thông báo mới</div>
+        <% } else { %>
+          <div style="margin-top: 12px; color: #aaa;">Không có thông báo mới</div>
+        <% } %>
       </div>
     </div>
 
