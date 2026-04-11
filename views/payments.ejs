@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+  <% const currentUserRole = (typeof user !== 'undefined' && user && user.role) ? user.role : null; %>
+  <% const dashboardPathSafe = typeof dashboardPath !== 'undefined' ? dashboardPath : (currentUserRole === 'receptionist' ? '/receptionist/dashboard' : '/admin/dashboard'); %>
   <header>
     <h1>💰 QUẢN LÝ THANH TOÁN 💳</h1>
     <p>Theo Dõi & Ghi Nhận Chi Phí Hội Viên</p>
@@ -21,7 +23,7 @@
 
     <div class="card" style="padding: 25px; margin-bottom: 30px;">
       <h2>📝 Thêm Thanh Toán Mới</h2>
-      <form method="post" action="<%= user && user.role === 'receptionist' ? '/receptionist/payment/add' : '/admin/payment/add' %>">
+      <form method="post" action="<%= currentUserRole === 'receptionist' ? '/receptionist/payment/add' : '/admin/payment/add' %>">
         <label for="member_id">🎫 Chọn Hội Viên:</label>
         <select id="member_id" name="member_id" required>
           <option value="">-- Chọn hội viên --</option>
@@ -91,7 +93,7 @@
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
-      <a href="<%= dashboardPath %>" class="btn">← Quay Lại Dashboard</a>
+      <a href="<%= dashboardPathSafe %>" class="btn">← Quay Lại Dashboard</a>
     </div>
   </div>
 </body>

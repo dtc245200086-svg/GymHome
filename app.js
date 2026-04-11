@@ -187,6 +187,20 @@ if (usePg) {
 
 app.use(session(sessionConfig));
 
+// Make user and dashboard path available to all views
+app.use((req, res, next) => {
+  res.locals.user = req.session.user;
+  res.locals.dashboardPath = '/';
+  if (req.session.user && req.session.user.role) {
+    const role = req.session.user.role;
+    if (role === 'admin') res.locals.dashboardPath = '/admin/dashboard';
+    else if (role === 'receptionist') res.locals.dashboardPath = '/receptionist/dashboard';
+    else if (role === 'pt') res.locals.dashboardPath = '/pt/dashboard';
+    else if (role === 'member') res.locals.dashboardPath = '/member/dashboard';
+  }
+  next();
+});
+
 // Init DB
 function initSchema() {
   const idType = usePg ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';

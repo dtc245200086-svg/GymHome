@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+  <% const dashboardPathSafe = typeof dashboardPath !== 'undefined' ? dashboardPath : '/admin/dashboard'; %>
   <header>
     <h1>🔄 QUẢN LÝ GIA HẠN THẺ 📅</h1>
     <p>Theo Dõi & Gia Hạn Thẻ Hội Viên Hết Hạn</p>
@@ -53,7 +54,7 @@
     </table>
 
     <div style="text-align: center; margin-top: 40px;">
-      <a href="<%= dashboardPath %>" class="btn">← Quay Lại Dashboard</a>
+      <a href="<%= typeof dashboardPath !== 'undefined' ? dashboardPath : '/admin/dashboard' %>" class="btn">← Quay Lại Dashboard</a>
     </div>
   </div>
 </body>
