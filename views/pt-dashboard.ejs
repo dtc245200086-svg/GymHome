@@ -52,6 +52,10 @@
       color: #ff9800;
       font-weight: bold;
     }
+    .status-rejected {
+      color: #f44336;
+      font-weight: bold;
+    }
     .btn-confirm {
       background: #4caf50;
       color: white;
@@ -225,11 +229,19 @@
               <td><%= session.member_name %></td>
               <td><%= session.member_phone %></td>
               <td><%= session.date %></td>
-              <td class="<%= session.confirmed ? 'status-confirmed' : 'status-pending' %>">
-                <%= session.confirmed ? '✅ Đã Xác Nhận' : '⏳ Chờ Xác Nhận' %>
+              <td class="<%= session.confirmed ? 'status-confirmed' : (session.rejection_reason ? 'status-rejected' : 'status-pending') %>">
+                <% if (session.rejection_reason) { %>
+                  ❌ Đã Từ Chối: <%= session.rejection_reason %>
+                <% } else if (session.confirmed) { %>
+                  ✅ Đã Xác Nhận
+                <% } else { %>
+                  ⏳ Chờ Xác Nhận
+                <% } %>
               </td>
               <td>
-                <% if (!session.confirmed) { %>
+                <% if (session.rejection_reason) { %>
+                  <span style="color: #f44336;">Đã Từ Chối</span>
+                <% } else if (!session.confirmed) { %>
                   <form action="/pt/confirm/<%= session.id %>" method="POST" style="display: inline;">
                     <button type="submit" class="btn-confirm">Xác Nhận</button>
                   </form>
