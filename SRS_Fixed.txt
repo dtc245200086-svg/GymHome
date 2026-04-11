@@ -1,0 +1,558 @@
+Mục Lục Hình Ảnh và Bảng
+Bảng 1.1: Nhóm bên liên quan
+Bảng 1.2: Phân tích Tài liệu và Hiện trạng
+Bảng 1.3: Kịch bản phỏng vấn Stakeholders
+Bảng 1.4: Quan sát thực tế & yêu cầu phát sinh
+Bảng 2.1: Danh sách yêu cầu chức năng (Functional Requirements)
+Bảng 2.2: Danh sách yêu cầu phi chức năng (Non-functional Requirements)
+Bảng 2.3: Ràng buộc hệ thống (Constraints Table)
+Bảng 2.4: Danh sách Use Case hệ thống
+Bảng 2.5: Ma trận truy vết yêu cầu – Use Case
+Bảng 2.6: Đặc tả Use Case UC-02: Lấy mã QR
+Bảng 2.7: Đặc tả Use Case UC-04: Đăng ký gói tập
+Bảng 2.8: Đặc tả Use Case UC-08: Xác nhận ca dạy
+Bảng 2.9: Đặc tả Use Case UC-10: Cấu hình thiết bị
+Bảng 2.10: Nhóm lớp quản lý người dùng
+Bảng 2.11: Nhóm lớp nghiệp vụ gói tập
+Bảng 2.12: Nhóm lớp thiết bị & kiểm soát ra vào
+Bảng 2.13: Thuộc tính lớp UserAccount
+Bảng 2.14: Thuộc tính lớp Member
+Bảng 2.15: Phương thức lớp PT
+Bảng 2.16: Phương thức lớp Receptionist
+Bảng 2.17: Bảng thuộc tính – Admin
+Bảng 2.18: Phương thức – Admin
+Bảng 2.19: Thuộc tính lớp GymPackage
+Bảng 2.20: Thuộc tính & phương thức lớp thẻ hội viên
+Bảng 2.21: Thuộc tính & phương thức lớp hóa đơn
+Bảng 2.22: Thuộc tính & phương thức lớp thiết bị cửa
+Bảng 2.23: Thuộc tính & phương thức lớp nhật ký ra vào
+Bảng 2.24: Thuộc tính & phương thức lớp mật độ tầng
+Bảng 2.25: Bảng quan hệ giữa các lớp (Class Relationships)
+Bảng 2.26: Phân tầng Use Case UC-02
+Bảng 2.27: Phân tầng Use Case UC-04
+Bảng 2.28: Phân tầng Use Case UC-08
+Bảng 2.29: Phân tầng Use Case UC-10
+Bảng 2.30: Nhóm lớp tầng giao diện (UI Layer)
+Bảng 2.31: Nhóm lớp tầng nghiệp vụ (Business Layer)
+Bảng 2.32: Nhóm lớp tầng dữ liệu (Data Layer)
+Bảng 2.33: Tinh chế phương thức UC-02: Lấy mã QR & Check-in mở cửa
+Bảng 2.34: Tinh chế phương thức – UC-04: Đăng ký & kích hoạt gói tập
+Bảng 2.35: Tinh chế phương thức – UC-08: Xác nhận ca dạy PT
+Bảng 2.36: Tinh chế phương thức – UC-10: Cấu hình thiết bị cửa
+
+Mục lục hình ảnh
+Hình 2.1: Use Case tổng quát hệ thống GymHome
+Hình 2.2: Use Case phân rã – Hội viên
+Hình 2.3: Use Case phân rã – Lễ tân
+Hình 2.4: Use Case phân rã – Huấn luyện viên (PT)
+Hình 2.5: Use Case phân rã – Quản trị viên
+Hình 2.6: Sequence tổng quát hệ thống
+Hình 2.7: Sequence xử lý đăng ký gói tập
+Hình 2.8: Use Case 02: Lấy mã QR Check-in (Hội viên) - Thành công (Luồng chính)
+Hình 2.9: Use Case 02: Lấy mã QR Check-in (Hội viên) - Thất bại - Thẻ hết hạn hoặc Sai tầng
+Hình 2.10: Sequence UC-04: Đăng ký hội viên
+Hình 2.11: Sequence UC-08: Xác nhận ca dạy
+Hình 2.12: Sequence UC-10: Cấu hình thiết bị
+Hình 2.13: Sequence mở cửa tầng
+Hình 2.14: Sequence kiểm tra quyền truy cập
+Hình 2.15: Sequence ghi log hệ thống
+Hình 2.16: Sequence tổng hợp báo cáo
+
+Bảng Phân Công Công Việc Nhóm GymHome (Phần Báo Cáo & Demo)
+
+1. GIỚI THIỆU (Introduction)
+GymHome là phần mềm được tạo ra để cung cấp trải nghiệm dễ dàng cho khách hàng khi tìm kiếm về việc tập Gym.
+Tài liệu này mô tả phạm vi hệ thống, các bên liên quan, yêu cầu chức năng, yêu cầu phi chức năng và đặc tả chi tiết một số use case chính.
+1.1 Mục tiêu hệ thống (System Goals)
+Tự động hóa kiểm soát ra vào: Sử dụng công nghệ mã QR động trên ứng dụng di động để thay thế việc ghi chép tay hoặc dùng thẻ nhựa dễ thất lạc.
+Phân quyền không gian chính xác: Đảm bảo ngăn chặn tuyệt đối việc hội viên gói Thường lẻn vào khu vực VIP (tầng 4, 5) mà không cần tăng nhân sự canh gác.
+Tối ưu hóa vận hành: Cung cấp dữ liệu mật độ khách hàng tại từng tầng theo thời gian thực để Lễ tân và Quản lý điều phối hoạt động hiệu quả.
+Số hóa dịch vụ PT: Quản lý lịch dạy và tự động khấu trừ buổi tập, tránh tranh chấp giữa huấn luyện viên và khách hàng.
+1.2 Phạm vi (Scope)
+Nằm trong phạm vi:
+Quản lý hồ sơ hội viên và gói tập (Thường/VIP).
+Hệ thống sinh mã QR và tương tác với đầu đọc cửa 5 tầng.
+Quản lý lịch hẹn và xác nhận buổi dạy của PT.
+Dashboard báo cáo doanh thu và mật độ hội viên.
+Ngoài phạm vi:
+Hệ thống kế toán chuyên sâu (thuế, lương nhân viên chi tiết).
+Tích hợp hệ thống camera nhận diện khuôn mặt AI (nếu chưa làm).
+Quản lý kho bãi hàng hóa (nếu có bán thực phẩm chức năng tại quầy).
+1.3 Các bên liên quan (Stakeholders)
+
+Bảng 1.1: Nhóm bên liên quan
+| Nhóm | Mô tả | Vai trò |
+|------|--------|--------|
+| Hội viên | Khách hàng sử dụng dịch vụ gym | Tương tác với app để check-in, đặt lịch PT |
+| Lễ tân | Nhân viên tại quầy | Đăng ký hội viên, mở cửa thủ công, giám sát dashboard |
+| Huấn luyện viên (PT) | Nhân viên dạy tập | Xác nhận buổi dạy, quản lý lịch hẹn |
+| Quản trị viên (Admin) | Quản lý hệ thống | Cấu hình thiết bị, xem báo cáo, quản lý tài khoản |
+| Hệ thống ngoài | Thiết bị cửa, server | Tương tác tự động với phần mềm |
+
+1.4 Phân tích hiện trạng
+1. Bảng Phân tích Tài liệu và Hiện trạng (Document Analysis)
+Kỹ thuật này giúp bạn rút ra các yêu cầu sơ bộ từ những bất cập của quy trình thủ công hiện tại.
+Bảng 1.2: Phân tích Tài liệu và Hiện trạng
+| Quy trình hiện tại | Bất cập | Yêu cầu phát sinh |
+|-------------------|---------|-------------------|
+| Ghi chép tay ra vào | Dễ sai sót, mất thời gian | Tự động hóa check-in bằng QR |
+| Sử dụng thẻ nhựa | Dễ thất lạc, không phân quyền | Mã QR động với phân quyền tầng |
+| Quản lý PT thủ công | Tranh chấp buổi tập | Tự động khấu trừ sau xác nhận |
+
+2. Kịch bản Phỏng vấn Stakeholders (Interview Scripts)
+Phỏng vấn giúp bạn đào sâu nhu cầu của từng nhóm tác nhân đã tối ưu hóa.
+Bảng 1.3: Kịch bản phỏng vấn Stakeholders
+| Nhóm | Câu hỏi mẫu |
+|------|-------------|
+| Hội viên | Bạn gặp khó khăn gì khi check-in? Bạn muốn app có tính năng gì? |
+| Lễ tân | Bạn xử lý bao nhiêu khách/ngày? Vấn đề thường gặp là gì? |
+| PT | Bạn quản lý lịch hẹn như thế nào? Vấn đề tranh chấp buổi tập? |
+| Admin | Bạn cần báo cáo gì? Vấn đề kỹ thuật thường gặp? |
+
+3. Nhật ký Quan sát thực tế (Observation Log)
+Giúp phát hiện những hành vi thực tế mà người dùng có thể không nói ra trong phỏng vấn.
+Bảng 1.4: Quan sát thực tế & yêu cầu phát sinh
+| Hoạt động quan sát | Vấn đề phát hiện | Yêu cầu |
+|-------------------|-----------------|---------|
+| Hội viên chờ check-in | Ùn tắc tại quầy | Tăng tốc check-in <5s |
+| PT ghi chép buổi tập | Quên ghi, tranh chấp | Tự động xác nhận qua app |
+| Giám sát mật độ | Không có dữ liệu thời gian thực | Dashboard real-time |
+
+Yêu cầu chức năng và phi chức năng
+2.1 Danh sách yêu cầu chức năng (Functional Requirements)
+Các yêu cầu này tập trung vào việc giải quyết bài toán kiểm soát ra vào tòa nhà 5 tầng và quản lý hội viên.
+Bảng 2.1: Danh sách yêu cầu chức năng (Functional Requirements)
+| ID | Mô tả |
+|----|--------|
+| FR1 | Hệ thống cho phép đăng ký hội viên mới với thông tin cá nhân và gói tập |
+| FR2 | Sinh mã QR động cho hội viên check-in tại tầng được phép |
+| FR3 | Kiểm soát quyền truy cập tầng dựa trên loại gói (Thường: 1-3, VIP: 1-5) |
+| FR4 | Lễ tân có thể mở cửa thủ công khi cần |
+| FR5 | PT xác nhận buổi dạy để khấu trừ buổi tập |
+| FR6 | Admin cấu hình thiết bị cửa và xem báo cáo |
+
+2.2 Danh sách yêu cầu phi chức năng (Non-Functional Requirements)
+Những yêu cầu này đảm bảo hệ thống vận hành mượt mà và an toàn trong môi trường phòng tập thực tế.
+Bảng 2.2: Danh sách yêu cầu phi chức năng (Non-functional Requirements)
+| ID | Mô tả |
+|----|--------|
+| NFR1 | Hiệu suất: Thời gian check-in <5 giây |
+| NFR2 | Bảo mật: Mã QR hết hạn sau 60 giây |
+| NFR3 | Khả năng mở rộng: Hỗ trợ 500 hội viên đồng thời |
+| NFR4 | Tính sẵn sàng: Uptime 99% |
+| NFR5 | Giao diện: Responsive trên mobile |
+
+2.3 Ràng buộc cứng và ràng buộc mềm
+2.3.1 Ràng buộc cứng (Hard Constraints)
+Đây là các quy tắc bắt buộc mà hệ thống phải thực thi. Nếu vi phạm, giao dịch sẽ bị từ chối hoặc báo lỗi hệ thống.
+A. Thực thể và Định danh (Identity)
+Tính duy nhất (Uniqueness): MaTaiKhoan, MaThe, MaHoaDon và MaThietBi phải là duy nhất và không được phép trùng lặp trong toàn bộ cơ sở dữ liệu.
+Định dạng dữ liệu:
+SoDienThoai phải đủ 10 chữ số và bắt đầu bằng các đầu số nhà mạng hợp lệ.
+DiaChiIP của thiết bị cửa phải tuân thủ đúng định dạng IPv4.
+MaQR phải là mã động và chỉ có hiệu lực trong vòng 60 giây.
+B. Logic Phân quyền và Truy cập (Access Control)
+Thời hạn thẻ: Hệ thống phải từ chối mở cửa ngay lập tức nếu NgayHetHan của thẻ nhỏ hơn ngày hiện tại.
+Phân vùng tầng: Hội viên gói Thường tuyệt đối không được kích hoạt lệnh mở cửa tại tầng 4 và 5.
+Số dư buổi tập PT: Không cho phép PT thực hiện xacNhanCaDay nếu SoBuoiPT của khách bằng 0.
+
+2.3.2. Ràng buộc mềm (Soft Constraints)
+Đây là các quy tắc mang tính nghiệp vụ hoặc cảnh báo, giúp hệ thống vận hành linh hoạt hơn nhưng không ngăn chặn hoàn toàn thao tác của người dùng.
+A. Giám sát và Cảnh báo (Monitoring)
+Mật độ tầng: Khi SoLuongHienTai đạt đến ngưỡng SucChuaToiDa, hệ thống sẽ phát cảnh báo trên Dashboard của Lễ tân thay vì khóa cửa tầng (để đảm bảo an toàn phòng cháy chữa cháy).
+Nhắc nhở hết hạn: Hệ thống tự động gửi thông báo khi thẻ hội viên còn dưới 5 ngày sử dụng hoặc còn dưới 2 buổi tập PT.
+B. Trải nghiệm người dùng (UX)
+Thời gian phản hồi: Tốc độ từ lúc quét mã đến khi mở cửa nên dưới 5 giây để tránh ùn tắc.
+Lịch tập PT: Cảnh báo nếu hội viên đặt lịch trùng với ca dạy hiện tại của PT, nhưng có thể cho phép ghi đè nếu có sự đồng ý của cả hai bên.
+
+Bảng 2.3: Ràng buộc hệ thống (Constraints Table)
+| Loại | Mô tả | Ví dụ |
+|------|--------|-------|
+| Cứng | Tính duy nhất ID | MaTaiKhoan unique |
+| Cứng | Định dạng dữ liệu | SoDienThoai 10 chữ số |
+| Cứng | Phân quyền tầng | Thường không vào 4-5 |
+| Mềm | Cảnh báo mật độ | Phát cảnh báo khi đầy |
+| Mềm | Nhắc nhở hết hạn | Thông báo 5 ngày trước |
+
+2.4 Biểu đồ tuần tự chức năng
+
+CHƯƠNG III: PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG
+2. Biểu đồ usecase.
+2.1 Tác nhân
+2.1.1 Tác nhân hệ thống
+Trong hệ thống phần mềm quản lí người tập gym, các tác nhân ngoài của hệ thống là những thành phần không thuộc hệ thống nhưng có sự tương tác trực tiếp hoặc gián tiếp với hệ thống để thực hiện công việc, sử dụng chức năng hoặc nhận kết quả do hệ thống cung cấp. Với việc nhận diện đúng và đầy đủ các tác nhân ngoài sẽ giúp cho hệ thống được đảm bảo về mặt thiết kế được đầy đủ các chức năng và phù hợp với nhu cầu thực tế của người sử dụng.
+Hệ thống quản lý phòng Gym 5 tầng tương tác trực tiếp với 4 nhóm tác nhân chính sau đây:
+2.1.2 Nhóm Hội viên
+Đây là nhóm tác nhân chính, trực tiếp tạo ra dữ liệu ra vào cho hệ thống.
+Hội viên Thường: Những khách hàng mua gói tập cơ bản. Có quyền sử dụng App để mở cửa tại tầng 1 (Tiếp tân/Gửi đồ), tầng 2 và tầng 3 (Khu vực máy tập tiêu chuẩn).
+Hội viên VIP: Khách hàng cao cấp. Có quyền truy cập không giới hạn vào toàn bộ 5 tầng, bao gồm tầng 4 có phòng (Xông hơi/Massage) và tầng 5 (Khu vực tập luyện riêng tư/View cao cấp).
+Khách tập thử: Những người đăng ký trải nghiệm. Hệ thống chỉ cấp mã QR có hiệu lực trong ngày và chỉ mở được cửa tầng 1.
+
+2.1.3 Nhóm Nhân viên vận hành (Operational Staff)
+Những người trực tiếp sử dụng phần mềm để điều hành các hoạt động hằng ngày tại phòng Gym.
+Lễ tân (Receptionist): Đăng ký tài khoản và chụp ảnh chân dung cho 200 khách hàng.
+Thực hiện mở cửa thủ công qua phần mềm khi hội viên gặp sự cố App/Điện thoại.
+Giám sát màn hình Dashboard để điều phối lượng khách giữa các tầng, tránh tình trạng quá tải.
+Huấn luyện viên (PT): Theo dõi danh sách khách hàng mình đang phụ trách.
+Xác nhận hoàn thành buổi tập với khách để hệ thống trừ số buổi trong gói tập PT.
+
+2.1.4 Nhóm Quản trị và Điều hành (System Management)
+Nhóm tác nhân đảm bảo sự hoạt động đúng đắn của quy trình kinh doanh và kỹ thuật.
+Admin: Quản trị hệ thống và quản lý tài chính.
+Có quyền cao nhất để cấu hình thiết bị cửa, quản lý tài khoản nhân viên và xem báo cáo doanh thu.
+
+2.1.5 Nhóm Hệ thống ngoài (External Systems)
+Đây là các thành phần phần cứng hoặc dịch vụ bên ngoài tương tác tự động với phần mềm để thực hiện các hành động vật lý hoặc gửi dữ liệu mà không cần con người can thiệp trực tiếp.
+Hệ thống cửa (Door System):
+Bao gồm các đầu đọc mã QR (QR Readers), bộ điều khiển trung tâm và khóa điện từ (Electronic Locks) được lắp đặt tại mỗi tầng.
+Vai trò: Tiếp nhận dữ liệu định danh từ ứng dụng, thực hiện đối soát quyền hạn tầng và thực thi lệnh mở cửa vật lý. Đồng thời, nhận các thông số cấu hình IP từ Quản trị viên để duy trì kết nối.
+
+2.2 Use Case tổng quát (Business Use Case Diagram)
+2.2.1 Bảng tổng hợp danh sách Use Case
+Bảng 2.4: Danh sách Use Case hệ thống
+| UC ID | Tên Use Case | Tác nhân | Mô tả |
+|-------|--------------|----------|--------|
+| UC-01 | Đăng nhập | Tất cả | Đăng nhập vào hệ thống |
+| UC-02 | Lấy mã QR | Hội viên | Sinh mã QR để check-in |
+| UC-03 | Check-in | Hội viên | Mở cửa bằng QR |
+| UC-04 | Đăng ký gói tập | Lễ tân | Đăng ký hội viên mới |
+| UC-05 | Mở cửa thủ công | Lễ tân | Mở cửa khi cần |
+| UC-06 | Giám sát mật độ | Lễ tân | Xem dashboard tầng |
+| UC-07 | Đặt lịch PT | Hội viên | Đặt lịch với PT |
+| UC-08 | Xác nhận ca dạy | PT | Xác nhận buổi tập |
+| UC-09 | Xem báo cáo | Admin | Báo cáo doanh thu |
+| UC-10 | Cấu hình thiết bị | Admin | Cấu hình cửa tầng |
+
+2.2.2 Ma trận truy vết yêu cầu (Traceability Matrix) mẫu
+Bảng 2.5: Ma trận truy vết yêu cầu – Use Case
+| Yêu cầu | UC-01 | UC-02 | UC-04 | UC-08 | UC-10 |
+|---------|-------|-------|-------|-------|-------|
+| FR1 |  |  | X |  |  |
+| FR2 |  | X |  |  |  |
+| FR5 |  |  |  | X |  |
+| FR6 |  |  |  |  | X |
+| NFR1 | X | X | X | X | X |
+
+2.3 Biểu đồ usecase phân rã
+
+Hình 2.1: Use Case tổng quát hệ thống GymHome
+
+2.4 Biểu đồ use case phân rã
+2.4.1 Phân rã usecase "Hội Viên"
+
+Hình 2.2: Use Case phân rã – Hội viên
+
+2.4.2 Phân rã usecase "Lễ Tân"
+
+Hình 2.3: Use Case phân rã – Lễ tân
+
+2.4.3 Phân rã usecase "PT"
+
+Hình 2.4: Use Case phân rã – Huấn luyện viên (PT)
+
+2.4.4 Phân rã usecase "Quản Trị Viên"
+
+Hình 2.5: Use Case phân rã – Quản trị viên
+
+3. Đặc tả các usecase
+Việc đặc tả Use Case là bước cần thiết nhằm chuyển các biểu đồ mang tính trực quan sang mô tả chi tiết hành vi của hệ thống. Biểu đồ Use Case chỉ cho thấy tác nhân và các chức năng liên quan, nhưng không phản ánh các luồng xử lý, điều kiện trước – sau, hay các tình huống ngoại lệ có thể xảy ra. Đặc tả Use Case giúp làm rõ yêu cầu nghiệp vụ, thống nhất cách hiểu giữa khách hàng, phân tích viên và lập trình viên, đồng thời cung cấp cơ sở để xây dựng thiết kế giao diện, sơ đồ tuần tự và các test case. Nhờ đó, tài liệu yêu cầu tránh mơ hồ, giảm sai sót và đảm bảo quá trình phát triển hệ thống diễn ra chính xác và nhất quán.
+3.1 Đặc tả UC02 – Lấy mã QR
+Bảng 2.6: Đặc tả Use Case UC-02: Lấy mã QR
+| Trường | Mô tả |
+|--------|--------|
+| Tác nhân | Hội viên |
+| Điều kiện trước | Hội viên đã đăng nhập |
+| Luồng chính | 1. Hội viên chọn "Lấy QR" | 2. Hệ thống sinh QR động | 3. Hiển thị QR |
+| Luồng thay thế | Thẻ hết hạn: Thông báo lỗi |
+| Điều kiện sau | QR có hiệu lực 60s |
+
+3.2 Đặc tả UC04 – Đăng ký & Kích hoạt gói tập
+Bảng 2.7: Đặc tả Use Case UC-04: Đăng ký gói tập
+| Trường | Mô tả |
+|--------|--------|
+| Tác nhân | Lễ tân |
+| Điều kiện trước | Khách hàng cung cấp thông tin |
+| Luồng chính | 1. Nhập thông tin | 2. Chọn gói | 3. Thanh toán | 4. Kích hoạt thẻ |
+| Luồng thay thế | Thông tin sai: Yêu cầu nhập lại |
+| Điều kiện sau | Thẻ có quyền truy cập |
+
+3.3 Đặc tả UC08 – Xác nhận ca dạy
+Bảng 2.8: Đặc tả Use Case UC-08: Xác nhận ca dạy
+| Trường | Mô tả |
+|--------|--------|
+| Tác nhân | PT |
+| Điều kiện trước | Buổi tập đã diễn ra |
+| Luồng chính | 1. Chọn buổi | 2. Xác nhận | 3. Khấu trừ buổi |
+| Luồng thay thế | Không đủ buổi: Thông báo |
+| Điều kiện sau | Buổi tập được ghi nhận |
+
+3.4 Đặc tả UC10 - Cấu hình thiết bị tầng
+Bảng 2.9: Đặc tả Use Case UC-10: Cấu hình thiết bị
+| Trường | Mô tả |
+|--------|--------|
+| Tác nhân | Admin |
+| Điều kiện trước | Admin đăng nhập |
+| Luồng chính | 1. Chọn thiết bị | 2. Cập nhật IP | 3. Lưu cấu hình |
+| Luồng thay thế | IP sai: Báo lỗi |
+| Điều kiện sau | Thiết bị kết nối thành công |
+
+4. Thiết kế biểu đồ lớp phân tích (Analysis Class Diagram)
+3. Nhóm Quản lý Người dùng (User Management)
+Bảng 2.10: Nhóm lớp quản lý người dùng
+| Lớp | Mô tả |
+|------|--------|
+| UserAccount | Cơ sở cho tất cả user |
+| Member | Hội viên kế thừa UserAccount |
+| PT | Huấn luyện viên kế thừa UserAccount |
+| Receptionist | Lễ tân kế thừa UserAccount |
+| Admin | Quản trị kế thừa UserAccount |
+
+4. Nhóm Nghiệp vụ Gói tập & Tài chính (Core Business)
+Bảng 2.11: Nhóm lớp nghiệp vụ gói tập
+| Lớp | Mô tả |
+|------|--------|
+| GymPackage | Định nghĩa gói tập |
+| TheHoiVien | Quản lý thẻ hội viên |
+| HoaDon | Quản lý hóa đơn |
+
+5. Nhóm Kiểm soát Ra vào & Thiết bị (Hardware Interface)
+Bảng 2.12: Nhóm lớp thiết bị & kiểm soát ra vào
+| Lớp | Mô tả |
+|------|--------|
+| ThietBiCua | Giao diện thiết bị cửa |
+| NhatKyRaVao | Nhật ký ra vào |
+| MatDoTang | Mật độ tầng |
+
+6. Mô tả chi tiết từng lớp
+4.1 Lớp TÀI KHOẢN – UserAccount
+(Lớp cơ sở quản lý thông tin đăng nhập và quyền hạn)
+Bảng 2.13: Thuộc tính lớp UserAccount
+| Thuộc tính | Kiểu | Mô tả |
+|------------|------|--------|
+| userID | String | ID duy nhất |
+| username | String | Tên đăng nhập |
+| passwordHash | String | Mật khẩu mã hóa |
+| role | String | Vai trò (member, pt, etc.) |
+| status | Boolean | Trạng thái active |
+
+Lớp cha UserAccount (Tài khoản người dùng): Đóng vai trò là lớp cơ sở (Base Class), chứa các thuộc tính dùng chung cho tất cả các bên như userID, username, passwordHash, role và status.
+Lớp Hội viên (Member) kế thừa từ UserAccount: Ngoài các thuộc tính đăng nhập, lớp này bổ sung thêm các thông tin riêng biệt như Họ_Tên, Số_Điện_Thoại và Ảnh_Đại_Diện để phục vụ việc tập luyện.
+Lớp Nhân viên (Staff) kế thừa từ UserAccount: Đây là lớp đại diện cho cả Lễ tân và Quản lý, bổ sung thêm các thuộc tính như Mã_Nhân_Viên và Ca_Làm_Việc.
+Lớp Admin kế thừa từ UserAccount: Được cấp đặc quyền cao nhất để thực hiện các hành động kỹ thuật như cấu hình Thiết bị cửa và quản lý an toàn dữ liệu.
+
+4.2 Lớp HỘI VIÊN – Member
+Lớp con kế thừa từ UserAccount, lưu trữ hồ sơ cá nhân và theo dõi quá trình tập luyện.
+Bảng 2.14: Thuộc tính lớp Member
+| Thuộc tính | Kiểu | Mô tả |
+|------------|------|--------|
+| hoTen | String | Họ tên |
+| soDienThoai | String | Số điện thoại |
+| anhDaiDien | String | Ảnh đại diện |
+| loaiGoi | String | Thường/VIP |
+
+Bảng phương thức Hội viên
+| Phương thức | Mô tả |
+|-------------|--------|
+| layQR() | Sinh mã QR |
+| checkIn() | Check-in tầng |
+
+4.3 Lớp PT (Huấn luyện viên)
+Lớp con kế thừa từ UserAccount, quản lý các thông tin chuyên môn và hoạt động giảng dạy của huấn luyện viên.
+Bảng 2.15: Phương thức lớp PT
+| Phương thức | Mô tả |
+|-------------|--------|
+| xacNhanCaDay() | Xác nhận buổi dạy |
+| xemLichHen() | Xem lịch hẹn |
+
+4.4 Lớp LeTan– Receptionist
+(Nhân viên vận hành trực tiếp tại quầy, xử lý đăng ký và thu tiền khách hàng)
+Bảng 2.16: Phương thức lớp Receptionist
+| Phương thức | Mô tả |
+|-------------|--------|
+| dangKyHoiVien() | Đăng ký hội viên |
+| moCuaThuCong() | Mở cửa thủ công |
+
+4.5 Lớp Admin -Quản Trị Hệ Thống
+(Tác nhân quản lý kỹ thuật, chịu trách nhiệm về tính sẵn sàng, cấu hình thiết bị và an toàn dữ liệu cho toàn bộ tòa nhà 5 tầng)
+#Lớp con kế thừa từ UserAccount, quản lý toàn bộ cấu hình thiết bị và báo cáo tài chính tòa nhà.
+Bảng 2.17: Bảng thuộc tính – Admin
+| Thuộc tính | Kiểu | Mô tả |
+|------------|------|--------|
+| quyenCaoNhat | Boolean | Quyền cao nhất |
+
+Bảng 2.18: Phương thức – Admin
+| Phương thức | Mô tả |
+|-------------|--------|
+| cauHinhThietBi() | Cấu hình thiết bị |
+| xemBaoCao() | Xem báo cáo |
+
+Nhóm lớp tài chính
+4.6 Lớp GoiTap– GymPackage
+(Định nghĩa quyền lợi và mức giá của các dịch vụ tại phòng tập)
+Bảng 2.19: Thuộc tính lớp GymPackage
+| Thuộc tính | Kiểu | Mô tả |
+|------------|------|--------|
+| maGoi | String | Mã gói |
+| tenGoi | String | Tên gói (Thường/VIP) |
+| gia | Number | Giá |
+| quyenTang | Array | Quyền truy cập tầng |
+
+4.7 Lớp TheHoiVien (Quản lý trạng thái gói)
+Lớp trung tâm điều khiển quyền ra vào và quản lý buổi tập PT.
+Bảng 2.20: Thuộc tính & phương thức lớp thẻ hội viên
+| Thuộc tính/Phương thức | Kiểu/Mô tả |
+|-----------------------|-------------|
+| maThe | String | Mã thẻ |
+| ngayHetHan | Date | Ngày hết hạn |
+| soBuoiPT | Number | Số buổi PT còn lại |
+| kiemTraQuyen() | Kiểm tra quyền tầng |
+
+4.8 Lớp HoaDon (Quản lý tài chính)
+Bảng 2.21: Thuộc tính & phương thức lớp hóa đơn
+| Thuộc tính/Phương thức | Kiểu/Mô tả |
+|-----------------------|-------------|
+| maHoaDon | String | Mã hóa đơn |
+| tongTien | Number | Tổng tiền |
+| tinhTong() | Tính tổng tiền |
+
+4.9 Lớp ThietBiCua (Giao diện phần cứng)
+Bảng 2.22: Thuộc tính & phương thức lớp thiết bị cửa
+| Thuộc tính/Phương thức | Kiểu/Mô tả |
+|-----------------------|-------------|
+| maThietBi | String | Mã thiết bị |
+| diaChiIP | String | IP thiết bị |
+| moCua() | Mở cửa |
+
+4.10 Lớp NhatKyRaVao (Lịch sử truy cập)
+Lưu trữ toàn bộ dữ liệu di chuyển để hậu kiểm và giám sát.
+Bảng 2.23: Thuộc tính & phương thức lớp nhật ký ra vào
+| Thuộc tính/Phương thức | Kiểu/Mô tả |
+|-----------------------|-------------|
+| maLog | String | Mã log |
+| thoiGian | Date | Thời gian |
+| ghiLog() | Ghi nhật ký |
+
+4.11 Lớp MatĐoTang (FloorCapacity)
+Bảng 2.24: Thuộc tính & phương thức lớp mật độ tầng
+| Thuộc tính/Phương thức | Kiểu/Mô tả |
+|-----------------------|-------------|
+| tang | Number | Số tầng |
+| soLuongHienTai | Number | Số người hiện tại |
+| sucChuaToiDa | Number | Sức chứa tối đa |
+| capNhatMatDo() | Cập nhật mật độ |
+
+4.12 Bảng xác định mối quan hệ
+Bảng 2.25: Bảng quan hệ giữa các lớp (Class Relationships)
+| Lớp A | Quan hệ | Lớp B | Mô tả |
+|-------|---------|-------|--------|
+| Member | Kế thừa | UserAccount | Member extends UserAccount |
+| PT | Kế thừa | UserAccount | PT extends UserAccount |
+| TheHoiVien | Association | GymPackage | Thẻ liên kết với gói |
+| NhatKyRaVao | Association | Member | Log liên kết với member |
+
+4.13 Biểu đồ lớp phân tích (Analysis Class Diagram)
+
+4.14 Sơ đồ thực thể liên kết - ERD (Entity Relationship Diagram)
+
+4.15 Thiết kế chức năng hệ thống
+4.15.1 Kiến trúc 3 tầng
+4. Phân tầng UC-02 – Lấy mã QR Check-in (Hội viên)
+Use Case này mô tả luồng hội viên yêu cầu mã QR và hệ thống đối soát quyền truy cập tầng.
+Bảng 2.26: Phân tầng Use Case UC-02
+| Tầng | Lớp | Mô tả |
+|------|------|--------|
+| UI | QRView | Hiển thị QR |
+| Business | QRService | Sinh QR |
+| Data | MemberDAO | Lấy dữ liệu member |
+
+5. Phân tầng UC-04 – Đăng ký & Kích hoạt gói (Lễ tân)
+Use Case này mô tả việc Lễ tân nhập hồ sơ khách hàng mới và thiết lập quyền hạn tầng.
+Bảng 2.27: Phân tầng Use Case UC-04
+| Tầng | Lớp | Mô tả |
+|------|------|--------|
+| UI | RegisterView | Form đăng ký |
+| Business | RegisterService | Xử lý đăng ký |
+| Data | MemberDAO | Lưu member |
+
+6. Phân tầng UC-08 – Xác nhận ca dạy (PT)
+PT xác nhận buổi tập hoàn thành để hệ thống tự động khấu trừ số buổi trong gói của hội viên.
+Bảng 2.28: Phân tầng Use Case UC-08
+| Tầng | Lớp | Mô tả |
+|------|------|--------|
+| UI | ConfirmView | Nút xác nhận |
+| Business | PTService | Xác nhận và khấu trừ |
+| Data | PTDAO | Cập nhật buổi |
+
+Phân tầng UC10 – Cấu hình thiết bị tầng
+Bảng 2.29: Phân tầng Use Case UC-10
+| Tầng | Lớp | Mô tả |
+|------|------|--------|
+| UI | ConfigView | Form cấu hình |
+| Business | AdminService | Cập nhật thiết bị |
+| Data | DeviceDAO | Lưu cấu hình |
+
+4.15.2 Nhóm lớp theo kiến trúc 3 tầng (UI – Business – Data)
+Bảng 2.30: Nhóm lớp tầng giao diện (UI Layer)
+| Lớp | Mô tả |
+|------|--------|
+| LoginView | Trang đăng nhập |
+| DashboardView | Dashboard lễ tân |
+| QRView | Hiển thị QR |
+
+Bảng 2.31: Nhóm lớp tầng nghiệp vụ (Business Layer)
+| Lớp | Mô tả |
+|------|--------|
+| AuthService | Xử lý đăng nhập |
+| QRService | Sinh QR |
+| RegisterService | Đăng ký |
+
+Bảng 2.32: Nhóm lớp tầng dữ liệu (Data Layer)
+| Lớp | Mô tả |
+|------|--------|
+| UserDAO | Truy cập user |
+| MemberDAO | Truy cập member |
+| DeviceDAO | Truy cập thiết bị |
+
+4.15.3 Sơ đồ tuần tự
+
+Hình 2.6: Sequence đăng nhập thành công
+
+Hình 2.7: Sequence Đăng nhập thất bại
+
+Hình 2.8: Use Case 02: Lấy mã QR Check-in (Hội viên) - Thành công (Luồng chính)
+
+Hình 2.9: Use Case 02: Lấy mã QR Check-in (Hội viên) - Thất bại - Thẻ hết hạn hoặc Sai tầng
+
+Hình 2.10: Sequence UC-04: Đăng ký hội viên
+
+Hình 2.11: Sequence UC-08: Xác nhận ca dạy-Thành công
+
+Hình 2.12: Sequence UC-08: Xác nhận ca dạy-Thất bại
+
+Hình 2.13: Sequence UC-10: Cấu hình thiết bị
+
+Hình 2.14: Use Case 03: Đặt lịch tập với PT (Hội viên)
+
+Hình 2.15: Use Case 05: Mở cửa thủ công (Lễ tân)
+
+Hình 2.16: Use Case 06: Giám sát mật độ tầng (Lễ tân)
+4.15.4 Tinh chế phương thức cho các lớp
+Bảng 2.33: Tinh chế phương thức UC-02: Lấy mã QR & Check-in mở cửa
+| Phương thức | Tinh chế |
+|-------------|----------|
+| layQR() | Sinh mã ngẫu nhiên, lưu cache 60s |
+
+Bảng 2.34: Tinh chế phương thức – UC-04: Đăng ký & kích hoạt gói tập
+| Phương thức | Tinh chế |
+|-------------|----------|
+| dangKyHoiVien() | Validate dữ liệu, tạo thẻ |
+
+Bảng 2.35: Tinh chế phương thức – UC-08: Xác nhận ca dạy PT
+| Phương thức | Tinh chế |
+|-------------|----------|
+| xacNhanCaDay() | Kiểm tra buổi >0, trừ 1 |
+
+Bảng 2.36: Tinh chế phương thức – UC-10: Cấu hình thiết bị cửa
+| Phương thức | Tinh chế |
+|-------------|----------|
+| cauHinhThietBi() | Validate IP, gửi lệnh đến thiết bị |
