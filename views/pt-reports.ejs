@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📊 Thống Kê Buổi PT</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .stats-header {
+      background: linear-gradient(135deg, #ff6b35 0%, #d84315 100%);
+      padding: 40px 20px;
+      border-radius: 15px;
+      text-align: center;
+      margin-bottom: 40px;
+      box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);
+    }
+    .stats-header h1 {
+      color: white;
+      margin: 0;
+      font-size: 2.5em;
+    }
+    .stats-header p {
+      color: rgba(255, 255, 255, 0.9);
+      margin-top: 10px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 25px;
+      margin-bottom: 40px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 30px;
+      border-radius: 12px;
+      border-left: 5px solid #ff6b35;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+    .stat-card.confirmed {
+      border-left-color: #4caf50;
+    }
+    .stat-card.pending {
+      border-left-color: #ff9800;
+    }
+    .stat-card.rejected {
+      border-left-color: #f44336;
+    }
+    .stat-number {
+      font-size: 3.5em;
+      font-weight: bold;
+      margin: 20px 0;
+      line-height: 1;
+    }
+    .stat-card.confirmed .stat-number {
+      color: #4caf50;
+    }
+    .stat-card.pending .stat-number {
+      color: #ff9800;
+    }
+    .stat-card.rejected .stat-number {
+      color: #f44336;
+    }
+    .stat-label {
+      font-size: 0.95em;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .stat-description {
+      color: #ddd;
+      font-size: 0.9em;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #555;
+    }
+    .total-card {
+      background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 1.1em;
+      margin-top: 30px;
+      grid-column: 1 / -1;
+    }
+    .total-card strong {
+      font-size: 2em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📊 THỐNG KÊ BUỔI PT</h1>
+    <p>Xem chi tiết các buổi tập của bạn</p>
+  </header>
+
+  <div class="container">
+    <div class="stats-header">
+      <h1>💪 Hiệu Suất PT</h1>
+      <p>Tổng hợp các buổi dạy - Xác nhận, Chờ, Từ chối</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card confirmed">
+        <div class="stat-label">✅ Đã Xác Nhận</div>
+        <div class="stat-number"><%= pt_confirmed %></div>
+        <div class="stat-description">Buổi tập được xác nhận và sắp diễn ra</div>
+      </div>
+
+      <div class="stat-card pending">
+        <div class="stat-label">⏳ Chờ Xác Nhận</div>
+        <div class="stat-number"><%= pt_pending %></div>
+        <div class="stat-description">Buổi tập hội viên vừa đặt, chờ phản hồi</div>
+      </div>
+
+      <div class="stat-card rejected">
+        <div class="stat-label">❌ Từ Chối</div>
+        <div class="stat-number"><%= pt_rejected %></div>
+        <div class="stat-description">Buổi tập bạn đã từ chối</div>
+      </div>
+
+      <div class="total-card">
+        <strong><%= pt_confirmed + pt_pending + pt_rejected %></strong> Tổng Số Lịch (Xác nhận + Chờ + Từ chối)
+      </div>
+    </div>
+
+    <div style="background: #2a2a2a; padding: 25px; border-radius: 12px; margin-top: 30px; border-left: 3px solid #ff6b35;">
+      <h3 style="color: #ff6b35; margin-top: 0;">📌 Hướng Dẫn Sử Dụng</h3>
+      <ul style="color: #ddd; line-height: 2;">
+        <li><strong>✅ Đã Xác Nhận:</strong> Các buổi tập mà bạn đã nhấn nút xác nhận hoặc hội viên tự xác nhận</li>
+        <li><strong>⏳ Chờ Xác Nhận:</strong> Hội viên vừa đặt lịch, bạn cần xem thông báo và phản hồi</li>
+        <li><strong>❌ Từ Chối:</strong> Các buổi tập mà bạn đã từ chối (với lý do)</li>
+      </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/pt/dashboard" class="btn">← Quay lại Dashboard</a>
+      <a href="/pt/notifications" class="btn" style="margin-left: 10px;">🔔 Xem Thông Báo</a>
+    </div>
+  </div>
+</body>
+</html>

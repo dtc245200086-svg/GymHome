@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cảnh báo hệ thống</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <% const expiryList = typeof expiryAlerts !== 'undefined' ? expiryAlerts : []; %>
+  <% const ptList = typeof ptAlerts !== 'undefined' ? ptAlerts : []; %>
+  <% const returnPath = typeof dashboardPath !== 'undefined' ? dashboardPath : '/admin/dashboard'; %>
+  <header>
+    <h1>Cảnh báo hệ thống</h1>
+    <p>Quản lý cảnh báo hội viên</p>
+  </header>
+  <div class="container">
+    <h2>⚠️ Thẻ sắp hết hạn (< 5 ngày)</h2>
+    <% if (expiryList.length > 0) { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Họ tên</th>
+            <th>Số điện thoại</th>
+            <th>Loại</th>
+            <th>Hết hạn</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% expiryList.forEach(member => { %>
+            <tr>
+              <td><%= member.name %></td>
+              <td><%= member.phone %></td>
+              <td><%= member.type %></td>
+              <td><span style="color: red;"><%= member.expiry %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p>Không có cảnh báo</p>
+    <% } %>
+
+    <h2>🏋️ Buổi PT sắp hết (< 2 buổi)</h2>
+    <% if (ptList.length > 0) { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Họ tên</th>
+            <th>Số điện thoại</th>
+            <th>Buổi PT còn lại</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% ptList.forEach(member => { %>
+            <tr>
+              <td><%= member.name %></td>
+              <td><%= member.phone %></td>
+              <td><span style="color: orange;"><%= member.pt_sessions %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p>Không có cảnh báo</p>
+    <% } %>
+
+    <br>
+    <a href="<%= returnPath %>">Quay lại dashboard</a>
+  </div>
+</body>
+</html>

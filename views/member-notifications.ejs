@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔔 Thông Báo Hội Viên</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .notification-item {
+      background: #2a2a2a;
+      border-left: 4px solid #ff6b35;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .notification-item.booking {
+      border-left-color: #2196F3;
+    }
+    .notification-item.rejection {
+      border-left-color: #f44336;
+    }
+    .notification-item.payment {
+      border-left-color: #4caf50;
+    }
+    .notification-time {
+      font-size: 0.85em;
+      color: #888;
+      margin-top: 8px;
+    }
+    .notification-message {
+      color: #fff;
+      font-size: 1em;
+      line-height: 1.5;
+    }
+    .notification-status {
+      display: inline-block;
+      font-size: 0.8em;
+      padding: 3px 8px;
+      border-radius: 3px;
+      margin-top: 8px;
+    }
+    .status-success {
+      background: #4caf50;
+      color: white;
+    }
+    .status-rejected {
+      background: #f44336;
+      color: white;
+    }
+    .status-info {
+      background: #2196F3;
+      color: white;
+    }
+    .status-warning {
+      background: #ff9800;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔔 THÔNG BÁO HỘI VIÊN</h1>
+    <p>Cập nhật về thanh toán, đặt lịch PT và phản hồi từ PT</p>
+  </header>
+
+  <div class="container">
+    <div style="text-align: center; margin: 20px 0; padding: 15px; background: #2a2a2a; border-radius: 8px;">
+      <button onclick="location.reload()" class="btn" style="background: #2196F3;">🔄 Làm Mới Dữ Liệu</button>
+      <p style="color: #aaa; font-size: 0.9em; margin-top: 10px;">Trang sẽ tự động làm mới mỗi 20 giây để hiển thị thông báo mới</p>
+    </div>
+
+    <% if (notifications.length === 0) { %>
+      <div class="alert" style="margin: 20px 0;">
+        ✨ Không có thông báo mới
+      </div>
+    <% } else { %>
+      <div style="margin-bottom: 20px;">
+        <% notifications.forEach(n => { 
+          let notifClass = 'booking';
+          if (n.origin === 'pt_rejection') notifClass = 'rejection';
+          else if (n.origin === 'payment') notifClass = 'payment';
+          else if (n.origin === 'member_booking') notifClass = 'booking';
+        %>
+          <div class="notification-item <%= notifClass %>">
+            <div class="notification-message"><%= n.message %></div>
+            <div class="notification-status status-<%= n.status %>">
+              <%= n.status === 'success' ? '✅' : '' %>
+              <%= n.status === 'rejected' ? '❌' : '' %>
+              <%= n.status === 'info' ? 'ℹ️' : '' %>
+              <%= n.status === 'warning' ? '⚠️' : '' %>
+              <%= n.status %>
+            </div>
+            <div class="notification-time">
+              📅 <%= new Date(n.created_at).toLocaleString('vi-VN') %>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <div style="text-align: center; margin-top: 30px;">
+      <a href="/member/dashboard" class="btn">← Quay lại Dashboard</a>
+    </div>
+  </div>
+
+  <script>
+    // Auto-refresh page every 10 seconds for faster notification sync
+    setInterval(function() {
+      location.reload();
+    }, 10000);
+  </script>
+</body>
+</html>

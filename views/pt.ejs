@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý PT</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Danh sách buổi tập PT</h1>
+  </header>
+  <div class="container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Hội viên</th>
+          <th>Ngày</th>
+          <th>Trạng thái</th>
+          <th>Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% sessions.forEach(session => { %>
+          <tr>
+            <td><%= session.id %></td>
+            <td><%= session.member_name %></td>
+            <td><%= session.date %></td>
+            <td><%= session.confirmed ? 'Đã xác nhận' : 'Chưa xác nhận' %></td>
+            <td>
+              <% if (!session.confirmed) { %>
+                <form action="/pt/confirm/<%= session.id %>" method="post" style="display:inline;">
+                  <button type="submit">Xác nhận</button>
+                </form>
+              <% } else { %>
+                Đã hoàn thành
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <br>
+    <a href="/">Quay lại trang chủ</a>
+  </div>
+</body>
+</html>

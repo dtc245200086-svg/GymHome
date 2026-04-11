@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>✏️ Chỉnh Sửa Thông Tin PT - Gym Home</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .edit-form {
+      background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 600px;
+      margin: 0 auto;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      color: #ff6b35;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #444;
+      border-radius: 8px;
+      background: #333;
+      color: #fff;
+      font-size: 1em;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      border-color: #ff6b35;
+      outline: none;
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 30px;
+    }
+    .btn-group button,
+    .btn-group a {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1em;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+    }
+    .btn-save {
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .btn-save:hover {
+      background: #45a049;
+    }
+    .btn-cancel {
+      background: #666;
+      color: white;
+    }
+    .btn-cancel:hover {
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>✏️ CHỈNH SỬA THÔNG TIN CÁ NHÂN PT</h1>
+    <p>Cập nhật thông tin hồ sơ huấn luyện viên</p>
+  </header>
+
+  <div class="container">
+    <div class="edit-form">
+      <form method="POST" action="/pt/update-profile">
+        <div class="form-group">
+          <label for="name">👤 Họ Tên:</label>
+          <input type="text" id="name" name="name" value="<%= pt.name %>" required>
+        </div>
+
+        <div class="form-group">
+          <label for="specialty">🎯 Chuyên Môn:</label>
+          <input type="text" id="specialty" name="specialty" placeholder="VD: Fitness Training, Yoga, etc." value="<%= pt.specialty %>">
+        </div>
+
+        <div class="form-group">
+          <label for="experience_years">📅 Kinh Nghiệm (năm):</label>
+          <input type="number" id="experience_years" name="experience_years" min="0" value="<%= pt.experience_years %>" required>
+        </div>
+
+        <div class="form-group">
+          <label for="bio">📝 Tiểu Sử/Mô Tả:</label>
+          <textarea id="bio" name="bio" placeholder="Viết về bản thân, thành tích, phương pháp dạy..."><%= pt.bio %></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="profile_picture">📷 URL Ảnh Đại Diện:</label>
+          <input type="url" id="profile_picture" name="profile_picture" placeholder="https://example.com/image.jpg" value="<%= pt.profile_picture %>">
+          <% if (pt.profile_picture) { %>
+            <div style="margin-top: 10px; text-align: center;">
+              <img src="<%= pt.profile_picture %>" alt="<%= pt.name %>" style="max-width: 150px; border-radius: 10px;">
+            </div>
+          <% } %>
+        </div>
+
+        <div class="btn-group">
+          <button type="submit" class="btn-save">💾 Lưu Thay Đổi</button>
+          <a href="/pt/dashboard" class="btn-cancel">❌ Hủy</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

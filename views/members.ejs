@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danh sách hội viên</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Danh sách hội viên</h1>
+  </header>
+  <div class="container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Họ tên</th>
+          <th>Số điện thoại</th>
+          <th>Loại</th>
+          <th>Hết hạn</th>
+          <th>Buổi PT</th>
+          <th>Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% members.forEach(member => { %>
+          <tr>
+            <td><%= member.id %></td>
+            <td><%= member.name %></td>
+            <td><%= member.phone %></td>
+            <td><%= member.type %></td>
+            <td><%= member.expiry %></td>
+            <td><%= member.pt_sessions %></td>
+            <td><a href="/qr/<%= member.id %>">Tạo QR</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <br>
+    <a href="/">Quay lại trang chủ</a>
+  </div>
+</body>
+</html>
