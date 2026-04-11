@@ -171,6 +171,51 @@ function repairSqliteSerialTables() {
 
 repairSqliteSerialTables();
 
+// Ensure all required tables exist in SQLite
+function initializeSqliteTables() {
+  if (usePg || !sqliteDb) return;
+
+  const tables = [
+    {
+      name: 'notifications',
+      createSql: `CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        member_id INTEGER,
+        receiver_user_id INTEGER,
+        floor INTEGER,
+        message TEXT,
+        status TEXT,
+        origin TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`
+    },
+    {
+      name: 'pt_sessions',
+      createSql: `CREATE TABLE IF NOT EXISTS pt_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        member_id INTEGER,
+        pt_id INTEGER,
+        date DATE,
+        confirmed BOOLEAN DEFAULT 0,
+        completed BOOLEAN DEFAULT FALSE,
+        rejection_reason TEXT
+      )`
+    }
+  ];
+
+  tables.forEach(table => {
+    sqliteDb.run(table.createSql, (err) => {
+      if (err) {
+        console.error(`Lỗi tạo bảng ${table.name}:`, err);
+      } else {
+        console.log(`✓ Bảng ${table.name} sẵn sàng`);
+      }
+    });
+  });
+}
+
+initializeSqliteTables();
+
 let sessionConfig = {
   secret: process.env.SESSION_SECRET || 'gymhome-secret-key',
   resave: false,
